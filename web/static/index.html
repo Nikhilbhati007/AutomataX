@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Automata Detective — Learning & Visualizing DFAs</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfeff',
+              500: '#06b6d4',
+              600: '#0891b2',
+              700: '#0e7490',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Cytoscape.js for interactive automata graph -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
+  <!-- Chart.js for experiment plots -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col antialiased selection:bg-cyan-500 selection:text-slate-950">
+
+  <!-- Header Navigation -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="h-9 w-9 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center font-bold text-slate-950 shadow-lg shadow-cyan-500/20">
+          AD
+        </div>
+        <div>
+          <h1 class="text-lg font-bold tracking-tight bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
+            Automata Detective
+          </h1>
+          <p class="text-xs text-slate-400">Problem 8: Grammatical Inference & DFA Visualization</p>
+        </div>
+      </div>
+
+      <!-- Presets & Demo Story Shortcut -->
+      <div class="flex items-center space-x-3">
+        <label for="preset-select" class="text-xs text-slate-400 font-medium hidden sm:inline">Story Preset:</label>
+        <select id="preset-select" class="bg-slate-800 border border-slate-700 text-xs rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-cyan-500 text-slate-200">
+          <option value="">-- Load Presentation Preset --</option>
+        </select>
+        <button id="btn-quick-run" class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold text-xs px-3.5 py-1.5 rounded-lg transition shadow-md shadow-cyan-500/20 flex items-center space-x-1.5">
+          <span>Run Inference</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <nav class="border-b border-slate-800 bg-slate-900/40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-2 py-2 overflow-x-auto">
+      <button class="nav-tab active px-4 py-2 text-xs font-semibold rounded-lg bg-slate-800 text-cyan-400 border border-slate-700 transition" data-target="tab-investigate">
+        1. Detective Canvas & Learner
+      </button>
+      <button class="nav-tab px-4 py-2 text-xs font-medium rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition" data-target="tab-simulator">
+        2. String Simulation & Token Path
+      </button>
+      <button class="nav-tab px-4 py-2 text-xs font-medium rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition" data-target="tab-replay">
+        3. Learning Replay Scrubber
+      </button>
+      <button class="nav-tab px-4 py-2 text-xs font-medium rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition" data-target="tab-compare">
+        4. Reference Diff & Counterexample
+      </button>
+      <button class="nav-tab px-4 py-2 text-xs font-medium rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition" data-target="tab-experiments">
+        5. Benchmark Labs & Plots
+      </button>
+    </div>
+  </nav>
+
+  <!-- Main Content Areas -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">
+
+    <!-- ================================================================= -->
+    <!-- TAB 1: Detective Canvas & Learner                                 -->
+    <!-- ================================================================= -->
+    <div id="tab-investigate" class="tab-panel space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Left Column: Training Data & Knobs (5 cols) -->
+        <div class="lg:col-span-5 space-y-5">
+
+          <!-- Reference Language / Target Config -->
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4 shadow-sm">
+            <div class="flex items-center justify-between">
+              <h2 class="text-sm font-bold text-slate-200 flex items-center space-x-2">
+                <span class="h-2 w-2 rounded-full bg-cyan-400"></span>
+                <span>Target Language & Data Knobs</span>
+              </h2>
+              <span id="target-alphabet-badge" class="font-mono text-xs px-2 py-0.5 rounded bg-slate-800 text-cyan-300 border border-slate-700">Σ = {a, b}</span>
+            </div>
+
+            <div class="space-y-3">
+              <div>
+                <label class="block text-xs font-medium text-slate-400 mb-1">Target Language</label>
+                <select id="select-target-lang" class="w-full bg-slate-800/90 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:ring-2 focus:ring-cyan-500 focus:outline-none">
+                  <!-- Populated dynamically -->
+                </select>
+                <p id="target-desc" class="text-xs text-slate-400 mt-1 italic"></p>
+              </div>
+
+              <!-- Sampling Mode & Size -->
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-medium text-slate-400 mb-1">Sampling Mode</label>
+                  <select id="select-sampling-mode" class="w-full bg-slate-800/90 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none">
+                    <option value="length_stratified" selected>Length-Stratified</option>
+                    <option value="uniform">Uniform</option>
+                    <option value="random_walk">DFA Random Walk</option>
+                    <option value="characteristic">Characteristic Sample</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-slate-400 mb-1">Sample Count (<span id="val-sample-count">35</span>)</label>
+                  <input type="range" id="input-sample-count" min="8" max="150" value="35" class="w-full accent-cyan-500">
+                </div>
+              </div>
+
+              <!-- Length Range & Noise -->
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-xs font-medium text-slate-400 mb-1">Max Length (<span id="val-max-length">7</span>)</label>
+                  <input type="range" id="input-max-length" min="3" max="12" value="7" class="w-full accent-cyan-500">
+                </div>
+                <div>
+                  <label class="block text-xs font-medium text-slate-400 mb-1">Label Noise (<span id="val-noise-rate">0%</span>)</label>
+                  <input type="range" id="input-noise-rate" min="0" max="25" value="0" step="1" class="w-full accent-rose-500">
+                </div>
+              </div>
+
+              <button id="btn-generate-data" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs rounded-lg border border-slate-700 transition flex items-center justify-center space-x-1">
+                <span>Regenerate Dataset</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Labeled Training Data Strings List -->
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
+            <div class="flex items-center justify-between">
+              <h3 class="text-xs font-bold text-slate-300">Training Strings (<span id="train-count">0</span>)</h3>
+              <div class="flex space-x-2 text-xs">
+                <span class="text-emerald-400 font-mono">Pos: <span id="pos-count">0</span></span>
+                <span class="text-slate-500">|</span>
+                <span class="text-rose-400 font-mono">Neg: <span id="neg-count">0</span></span>
+              </div>
+            </div>
+
+            <div id="training-examples-list" class="max-h-56 overflow-y-auto space-y-1 pr-1 font-mono text-xs">
+              <!-- Dynamically populated labeled pills -->
+            </div>
+          </div>
+
+          <!-- Inference Algorithm Choice -->
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
+            <h3 class="text-xs font-bold text-slate-300">Inference Algorithm</h3>
+            <div class="grid grid-cols-3 gap-2">
+              <button class="algo-btn active py-2.5 px-3 rounded-lg text-xs font-semibold border border-cyan-500/80 bg-cyan-500/10 text-cyan-300 transition" data-algo="edsm">
+                EDSM (Blue-Fringe)
+              </button>
+              <button class="algo-btn py-2.5 px-3 rounded-lg text-xs font-medium border border-slate-700 bg-slate-800/60 text-slate-300 transition" data-algo="rpni">
+                RPNI
+              </button>
+              <button class="algo-btn py-2.5 px-3 rounded-lg text-xs font-medium border border-slate-700 bg-slate-800/60 text-slate-300 transition" data-algo="lstar">
+                Angluin's L*
+              </button>
+            </div>
+            <p id="algo-explainer" class="text-xs text-slate-400 italic">
+              EDSM: Evidence-Driven State Merging. Evaluates all blue-fringe candidate merges by label endorsement gain; excels under sparse sample data.
+            </p>
+          </div>
+
+        </div>
+
+        <!-- Right Column: Interactive Cytoscape Graph (7 cols) -->
+        <div class="lg:col-span-7 space-y-4">
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-2">
+                <span class="h-2.5 w-2.5 rounded-full bg-emerald-400"></span>
+                <h2 class="text-sm font-bold text-slate-200">Learned Automaton Graph</h2>
+                <span id="badge-states-count" class="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 font-mono">0 states</span>
+              </div>
+              <div class="flex items-center space-x-2">
+                <button id="btn-fit-graph" class="px-2.5 py-1 text-xs bg-slate-800 hover:bg-slate-700 rounded text-slate-300 border border-slate-700 transition">
+                  Fit View
+                </button>
+                <button id="btn-relayout-graph" class="px-2.5 py-1 text-xs bg-slate-800 hover:bg-slate-700 rounded text-slate-300 border border-slate-700 transition">
+                  Re-layout
+                </button>
+              </div>
+            </div>
+
+            <!-- Graph Canvas -->
+            <div id="cy-container"></div>
+
+            <!-- Legend & Graph Metrics -->
+            <div class="flex flex-wrap items-center justify-between text-xs text-slate-400 pt-1 border-t border-slate-800/80 gap-2">
+              <div class="flex items-center space-x-4">
+                <span class="flex items-center space-x-1.5">
+                  <span class="h-3 w-3 rounded-full bg-cyan-500 border border-cyan-300 inline-block"></span>
+                  <span>Start State</span>
+                </span>
+                <span class="flex items-center space-x-1.5">
+                  <span class="h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-emerald-300 inline-block"></span>
+                  <span>Accepting State</span>
+                </span>
+                <span class="flex items-center space-x-1.5">
+                  <span class="h-3 w-3 rounded-full bg-slate-700 border border-slate-500 inline-block"></span>
+                  <span>Normal State</span>
+                </span>
+              </div>
+              <div id="inference-meta" class="font-mono text-cyan-400">
+                Merges: 0 | Steps: 0
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+
+    <!-- ================================================================= -->
+    <!-- TAB 2: String Simulation & Token Path                             -->
+    <!-- ================================================================= -->
+    <div id="tab-simulator" class="tab-panel hidden space-y-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-6">
+        <div>
+          <h2 class="text-base font-bold text-slate-200">Interactive String Path Simulation</h2>
+          <p class="text-xs text-slate-400 mt-0.5">Type an input string and watch the active token advance transition-by-transition across the automaton.</p>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-3">
+          <input type="text" id="input-test-string" placeholder="e.g. aab, 0101, etc." class="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 font-mono text-sm text-cyan-300 focus:outline-none focus:ring-2 focus:ring-cyan-500">
+          <button id="btn-step-simulate" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-4 py-2 text-xs font-semibold rounded-lg transition">
+            Step Once
+          </button>
+          <button id="btn-play-simulate" class="bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold px-5 py-2 text-xs rounded-lg transition shadow-md shadow-cyan-500/20">
+            Animate Path
+          </button>
+          <button id="btn-reset-simulate" class="bg-slate-800 hover:bg-slate-700 text-slate-400 px-3 py-2 text-xs rounded-lg transition">
+            Reset
+          </button>
+        </div>
+
+        <!-- Simulation Progress & Result Banner -->
+        <div id="sim-result-card" class="bg-slate-950/70 border border-slate-800 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div class="space-y-1">
+            <span class="text-xs text-slate-400 font-medium">Simulation Path Trace:</span>
+            <div id="sim-path-display" class="font-mono text-sm text-slate-200 flex items-center space-x-1.5 flex-wrap">
+              <span class="text-slate-500">Ready to simulate</span>
+            </div>
+          </div>
+          <div id="sim-verdict-badge" class="px-4 py-1.5 rounded-full text-xs font-bold font-mono tracking-wider bg-slate-800 text-slate-400 border border-slate-700">
+            AWAITING INPUT
+          </div>
+        </div>
+
+        <!-- Canvas Mirror -->
+        <div id="cy-sim-container" class="w-full h-96 rounded-xl border border-slate-800 bg-slate-950 overflow-hidden relative"></div>
+      </div>
+    </div>
+
+
+    <!-- ================================================================= -->
+    <!-- TAB 3: Learning Replay Scrubber ("The Demo Showstopper")          -->
+    <!-- ================================================================= -->
+    <div id="tab-replay" class="tab-panel hidden space-y-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-5">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-base font-bold text-slate-200">PTA Collapse & Merge Replay</h2>
+            <p class="text-xs text-slate-400 mt-0.5">Scrub through the grammatical inference execution timeline to watch the Prefix Tree Acceptor fold state-by-state.</p>
+          </div>
+          <span id="replay-step-counter" class="text-xs font-mono px-3 py-1 bg-cyan-950/80 text-cyan-300 border border-cyan-800/80 rounded-full font-bold">Step 0 / 0</span>
+        </div>
+
+        <!-- Timeline Scrubber Slider -->
+        <div class="space-y-2 bg-slate-950/60 p-4 rounded-xl border border-slate-800">
+          <div class="flex items-center space-x-4">
+            <button id="btn-replay-prev" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs font-mono font-bold transition">◀ Prev</button>
+            <input type="range" id="replay-scrubber" min="0" max="0" value="0" class="flex-1 accent-cyan-500 h-2 bg-slate-800 rounded-lg cursor-pointer">
+            <button id="btn-replay-next" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs font-mono font-bold transition">Next ▶</button>
+            <button id="btn-replay-play" class="px-4 py-1.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded text-xs font-bold transition">▶ Auto-Play</button>
+          </div>
+        </div>
+
+        <!-- Step Description Card -->
+        <div id="replay-step-card" class="p-4 bg-slate-800/50 border border-slate-700/80 rounded-xl text-xs space-y-2">
+          <div class="flex items-center justify-between font-mono">
+            <span id="replay-step-type" class="px-2 py-0.5 rounded bg-cyan-900/60 text-cyan-300 font-bold uppercase">INIT</span>
+            <span id="replay-state-count" class="text-slate-400">States: --</span>
+          </div>
+          <p id="replay-step-desc" class="text-slate-200 font-medium">Run inference on Tab 1 to populate the step history.</p>
+        </div>
+
+        <!-- Replay Graph Canvas -->
+        <div id="cy-replay-container" class="w-full h-[480px] rounded-xl border border-slate-800 bg-slate-950 overflow-hidden relative"></div>
+      </div>
+    </div>
+
+
+    <!-- ================================================================= -->
+    <!-- TAB 4: Reference Diff & Counterexample                           -->
+    <!-- ================================================================= -->
+    <div id="tab-compare" class="tab-panel hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <div class="lg:col-span-4 space-y-4">
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+            <h2 class="text-sm font-bold text-slate-200">Equivalence & Metrics</h2>
+
+            <div id="compare-verdict-card" class="p-4 rounded-xl border text-center space-y-1.5 bg-slate-950">
+              <span id="compare-verdict-pill" class="inline-block px-3 py-1 rounded-full text-xs font-bold font-mono bg-slate-800 text-slate-400">AWAITING COMPARISON</span>
+              <p id="compare-counterexample" class="text-xs font-mono text-rose-400"></p>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 text-xs font-mono">
+              <div class="p-3 bg-slate-950 rounded-lg border border-slate-800/80">
+                <span class="text-slate-400 block text-[10px] uppercase">Learned States</span>
+                <span id="comp-learned-states" class="text-base text-cyan-400 font-bold">--</span>
+              </div>
+              <div class="p-3 bg-slate-950 rounded-lg border border-slate-800/80">
+                <span class="text-slate-400 block text-[10px] uppercase">Minimal True States</span>
+                <span id="comp-minimal-states" class="text-base text-emerald-400 font-bold">--</span>
+              </div>
+              <div class="p-3 bg-slate-950 rounded-lg border border-slate-800/80">
+                <span class="text-slate-400 block text-[10px] uppercase">Test Accuracy</span>
+                <span id="comp-accuracy" class="text-base text-slate-200 font-bold">--</span>
+              </div>
+              <div class="p-3 bg-slate-950 rounded-lg border border-slate-800/80">
+                <span class="text-slate-400 block text-[10px] uppercase">Test F1 Score</span>
+                <span id="comp-f1" class="text-base text-slate-200 font-bold">--</span>
+              </div>
+            </div>
+
+            <button id="btn-recompare" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium rounded-lg border border-slate-700 transition">
+              Re-run Equivalence Check
+            </button>
+          </div>
+
+          <!-- Disagreeing strings -->
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
+            <h3 class="text-xs font-bold text-slate-300">Disagreeing Test Strings (Red Flags)</h3>
+            <div id="disagreements-list" class="max-h-48 overflow-y-auto space-y-1.5 font-mono text-xs">
+              <p class="text-slate-500 italic">No disagreements detected.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Reference Machine Visualizer -->
+        <div class="lg:col-span-8 space-y-4">
+          <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <h3 class="text-xs font-bold text-slate-200">Ground-Truth Minimal Reference DFA</h3>
+              <span id="ref-name-badge" class="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-emerald-400 border border-slate-700"></span>
+            </div>
+            <div id="cy-reference-container" class="w-full h-[460px] rounded-xl border border-slate-800 bg-slate-950 overflow-hidden relative"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+
+    <!-- ================================================================= -->
+    <!-- TAB 5: Benchmark Labs & Charts                                    -->
+    <!-- ================================================================= -->
+    <div id="tab-experiments" class="tab-panel hidden space-y-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h2 class="text-base font-bold text-slate-200">Experimental Benchmark Laboratory</h2>
+          <p class="text-xs text-slate-400 mt-0.5">Run learning curve scaling, label noise degradation studies, and active learning trials.</p>
+        </div>
+        <div class="flex items-center space-x-3">
+          <button id="btn-run-learning-curve" class="px-3.5 py-1.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs rounded-lg transition">
+            Run Learning Curves
+          </button>
+          <button id="btn-run-noise-study" class="px-3.5 py-1.5 bg-rose-500 hover:bg-rose-400 text-slate-950 font-bold text-xs rounded-lg transition">
+            Run Noise Study
+          </button>
+          <button id="btn-run-active-study" class="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-lg transition">
+            Run Active Learning
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Learning Curve Chart -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
+          <h3 class="text-xs font-bold text-slate-200 flex items-center justify-between">
+            <span>Learning Curves (Accuracy vs Size)</span>
+            <span class="text-[10px] text-cyan-400 font-mono">EDSM vs RPNI</span>
+          </h3>
+          <div class="h-64">
+            <canvas id="chart-learning-curve"></canvas>
+          </div>
+        </div>
+
+        <!-- Noise Tolerance Chart -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
+          <h3 class="text-xs font-bold text-slate-200 flex items-center justify-between">
+            <span>Noise Study (0%, 5%, 10%, 20%)</span>
+            <span class="text-[10px] text-rose-400 font-mono">Collapse vs Graceful</span>
+          </h3>
+          <div class="h-64">
+            <canvas id="chart-noise-study"></canvas>
+          </div>
+        </div>
+
+        <!-- Active vs Random Chart -->
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
+          <h3 class="text-xs font-bold text-slate-200 flex items-center justify-between">
+            <span>Active Learning vs Random</span>
+            <span class="text-[10px] text-amber-400 font-mono">Uncertainty Sampling</span>
+          </h3>
+          <div class="h-64">
+            <canvas id="chart-active-study"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800 bg-slate-900/60 py-4 text-center text-xs text-slate-500">
+    Automata Detective &bull; Grammatical Inference Engine (RPNI, EDSM, L*) &bull; Interactive DFA Visualization
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>
+
