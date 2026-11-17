@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AutomataX — Cyber-Detective & Forensic Inference Lab</title>
+  <title>AutomataX — Interactive Automata Research Workbench</title>
   
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -13,15 +13,12 @@
       theme: {
         extend: {
           colors: {
-            cyber: {
-              void: '#050811',
-              deep: '#080d1a',
-              surface: '#0e1628',
-              cyan: '#00f0ff',
-              amber: '#f59e0b',
-              emerald: '#00ff9d',
-              rose: '#ff2a5f',
-              violet: '#a855f7',
+            brand: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              400: '#38bdf8',
+              500: '#0ea5e9',
+              600: '#0284c7',
             }
           }
         }
@@ -31,599 +28,573 @@
 
   <!-- Cytoscape.js for interactive automata graph -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
-  <!-- Chart.js for experiment plots -->
+  <!-- Chart.js for benchmark plots -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Custom Cyber-Detective Stylesheet -->
+  <!-- Linear / Vercel Studio Workstation Stylesheet -->
   <link rel="stylesheet" href="/styles.css">
 </head>
-<body class="selection:bg-cyan-500 selection:text-slate-950 flex flex-col min-h-screen">
+<body class="flex flex-col h-screen w-screen overflow-hidden bg-[#080c14] text-slate-100 antialiased select-none">
 
   <!-- ===================================================================== -->
-  <!-- Top Forensic HUD Header                                               -->
+  <!-- Top Application Bar (Linear / Vercel Studio Slim Header)              -->
   <!-- ===================================================================== -->
-  <header class="border-b border-cyan-950/80 bg-slate-950/80 backdrop-blur-md sticky top-0 z-50">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-      
-      <!-- Brand & Tactical Identity -->
-      <div class="flex items-center space-x-3.5">
-        <div class="h-10 w-10 rounded-lg bg-gradient-to-br from-cyan-400 via-sky-500 to-blue-600 flex items-center justify-center font-black text-slate-950 shadow-lg shadow-cyan-500/25 border border-cyan-300/40 relative overflow-hidden group cursor-pointer" id="btn-brand-logo">
-          <span class="text-base font-mono tracking-tighter">AX</span>
-          <div class="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+  <header class="h-12 border-b border-white/[0.07] bg-[#0a0f1d]/90 backdrop-blur-md px-3.5 flex items-center justify-between z-40 shrink-0">
+    
+    <!-- Left: Brand, Target Language & Algorithm Switcher -->
+    <div class="flex items-center space-x-3">
+      <div class="flex items-center space-x-2 pr-2 border-r border-white/[0.08]">
+        <div class="h-6 w-6 rounded bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center font-bold text-slate-950 text-xs shadow-sm">
+          AX
         </div>
-        <div>
-          <div class="flex items-center space-x-2">
-            <h1 class="text-lg font-bold tracking-tight bg-gradient-to-r from-cyan-300 via-sky-200 to-amber-200 bg-clip-text text-transparent font-display">
-              AUTOMATA<span class="text-cyan-400">X</span>
-            </h1>
-            <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-cyan-950/80 border border-cyan-800 text-cyan-300 font-bold uppercase tracking-wider">v2.4 HUD</span>
-          </div>
-          <p class="text-[11px] text-slate-400 font-mono tracking-tight flex items-center gap-1.5">
-            <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 beacon-pulse"></span>
-            <span>FORENSIC GRAMMATICAL INFERENCE LAB</span>
-          </p>
-        </div>
+        <span class="text-xs font-semibold tracking-tight text-white">AutomataX</span>
       </div>
 
-      <!-- Live Telemetry & Quick Action Dock -->
-      <div class="flex items-center space-x-3">
-        <!-- SFX Synthesizer Toggle -->
-        <button id="btn-toggle-sfx" class="hud-btn hud-btn-secondary text-[11px] py-1.5 px-2.5 rounded-lg border border-slate-700 hidden sm:flex items-center space-x-1" title="Toggle Tactical Audio Feedback">
-          <span id="sfx-icon">🔊</span>
-          <span id="sfx-label" class="font-mono">SFX: ON</span>
-        </button>
-
-        <!-- Case Dossier Vault Trigger -->
-        <button id="btn-open-dossier" class="hud-btn hud-btn-amber text-xs py-1.5 px-3 rounded-lg flex items-center space-x-1.5 shadow-md shadow-amber-500/20">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg>
-          <span>Dossier Vault (<span id="dossier-count-badge">5</span>)</span>
-        </button>
-
-        <!-- Primary Execute Inference -->
-        <button id="btn-quick-run" class="hud-btn hud-btn-primary text-xs py-1.5 px-4 rounded-lg flex items-center space-x-2">
-          <svg class="w-3.5 h-3.5 animate-spin hidden" id="spin-inference" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
-          <span id="btn-run-text">Run Inference</span>
-        </button>
+      <!-- Language Dropdown -->
+      <div class="relative flex items-center">
+        <select id="select-target-lang" class="bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-xs font-medium rounded-md px-2.5 py-1 text-slate-200 focus:outline-none focus:border-sky-400 transition cursor-pointer">
+          <!-- Populated dynamically -->
+        </select>
       </div>
 
+      <!-- Inference Algorithm Segmented Switcher -->
+      <div class="segmented-control hidden sm:inline-flex">
+        <button class="algo-btn segmented-btn active" data-algo="edsm">
+          <span>EDSM</span>
+          <span class="text-[10px] text-sky-400 opacity-80">(Evidence)</span>
+        </button>
+        <button class="algo-btn segmented-btn" data-algo="rpni">
+          <span>RPNI</span>
+          <span class="text-[10px] text-slate-400">(Shortlex)</span>
+        </button>
+        <button class="algo-btn segmented-btn" data-algo="lstar">
+          <span>L*</span>
+          <span class="text-[10px] text-amber-400 opacity-80">(Active)</span>
+        </button>
+      </div>
     </div>
+
+    <!-- Center: View Mode Switcher -->
+    <div class="segmented-control">
+      <button class="mode-tab segmented-btn active" data-mode="canvas">
+        <svg class="w-3.5 h-3.5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+        <span class="hidden md:inline">Workbench</span>
+      </button>
+      <button class="mode-tab segmented-btn" data-mode="simulate">
+        <svg class="w-3.5 h-3.5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        <span class="hidden md:inline">String Traversal</span>
+      </button>
+      <button class="mode-tab segmented-btn" data-mode="replay">
+        <svg class="w-3.5 h-3.5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+        <span class="hidden md:inline">PTA Replay</span>
+      </button>
+      <button class="mode-tab segmented-btn" data-mode="compare">
+        <svg class="w-3.5 h-3.5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M16 3h5v5"></path><path d="M4 20L21 3"></path><path d="M21 16v5h-5"></path><path d="M15 15l6 6"></path><path d="M4 4l5 5"></path></svg>
+        <span class="hidden md:inline">Diff Polygraph</span>
+      </button>
+      <button class="mode-tab segmented-btn" data-mode="analytics">
+        <svg class="w-3.5 h-3.5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+        <span class="hidden md:inline">Analytics</span>
+      </button>
+    </div>
+
+    <!-- Right: Case Studies, Panel Toggles & Execute -->
+    <div class="flex items-center space-x-2">
+      <!-- Case Dossier Modal Button -->
+      <button id="btn-open-dossier" class="btn-workstation text-xs" title="Curated Research Scenarios">
+        <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+        <span class="hidden lg:inline">Case Studies</span>
+      </button>
+
+      <!-- Toggle Left Sidebar -->
+      <button id="btn-toggle-left-panel" class="btn-workstation p-1.5" title="Toggle Dataset Panel">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
+      </button>
+
+      <!-- Toggle Right Sidebar -->
+      <button id="btn-toggle-right-panel" class="btn-workstation p-1.5" title="Toggle Properties Inspector">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"></rect><line x1="15" y1="3" x2="15" y2="21"></line></svg>
+      </button>
+
+      <!-- Run Inference Primary Button -->
+      <button id="btn-quick-run" class="btn-workstation primary px-3">
+        <svg class="w-3 h-3 animate-spin hidden" id="spin-inference" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+        <span id="btn-run-text">Run Inference</span>
+      </button>
+    </div>
+
   </header>
 
   <!-- ===================================================================== -->
-  <!-- Tactical Sector Navigation Tabs                                       -->
+  <!-- Main Workspace Area: Expansive Canvas + Collapsible Drawers           -->
   <!-- ===================================================================== -->
-  <nav class="border-b border-cyan-950/60 bg-slate-950/60 backdrop-blur">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-1.5 py-2 overflow-x-auto">
-      <button class="nav-tab active px-3.5 py-1.5 text-xs font-mono font-bold rounded-lg bg-cyan-950/70 text-cyan-300 border border-cyan-600/60 transition flex items-center space-x-2" data-target="tab-investigate">
-        <span class="text-cyan-400">// 01</span>
-        <span>EVIDENCE & INFERENCE</span>
-      </button>
-      <button class="nav-tab px-3.5 py-1.5 text-xs font-mono font-semibold rounded-lg text-slate-400 hover:text-cyan-300 hover:bg-slate-900/60 transition flex items-center space-x-2" data-target="tab-simulator">
-        <span class="text-slate-500">// 02</span>
-        <span>STRING TRAVERSAL RADAR</span>
-      </button>
-      <button class="nav-tab px-3.5 py-1.5 text-xs font-mono font-semibold rounded-lg text-slate-400 hover:text-cyan-300 hover:bg-slate-900/60 transition flex items-center space-x-2" data-target="tab-replay">
-        <span class="text-slate-500">// 03</span>
-        <span>CRIME SCENE REPLAY</span>
-      </button>
-      <button class="nav-tab px-3.5 py-1.5 text-xs font-mono font-semibold rounded-lg text-slate-400 hover:text-cyan-300 hover:bg-slate-900/60 transition flex items-center space-x-2" data-target="tab-compare">
-        <span class="text-slate-500">// 04</span>
-        <span>GROUND TRUTH POLYGRAPH</span>
-      </button>
-      <button class="nav-tab px-3.5 py-1.5 text-xs font-mono font-semibold rounded-lg text-slate-400 hover:text-cyan-300 hover:bg-slate-900/60 transition flex items-center space-x-2" data-target="tab-experiments">
-        <span class="text-slate-500">// 05</span>
-        <span>BENCHMARK STRESS LAB</span>
-      </button>
-    </div>
-  </nav>
+  <main class="relative flex-1 flex overflow-hidden w-full h-[calc(100vh-48px)]">
 
-  <!-- ===================================================================== -->
-  <!-- Main Operational Canvas                                               -->
-  <!-- ===================================================================== -->
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full space-y-6">
-
-    <!-- =================================================================== -->
-    <!-- TAB 1: EVIDENCE & INFERENCE CANVAS                                  -->
-    <!-- =================================================================== -->
-    <div id="tab-investigate" class="tab-panel space-y-6">
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-        <!-- Left Column: Knobs & Evidence Board (5 cols) -->
-        <div class="lg:col-span-5 space-y-5">
-
-          <!-- Target Language & Data Knobs -->
-          <div class="hud-panel hud-bracket p-5 space-y-4">
-            <div class="flex items-center justify-between">
-              <h2 class="text-xs font-bold uppercase tracking-wider text-cyan-300 flex items-center space-x-2 font-display">
-                <span class="h-2 w-2 rounded-full bg-cyan-400 beacon-pulse"></span>
-                <span>Suspect Language & Data Knobs</span>
-              </h2>
-              <span id="target-alphabet-badge" class="font-mono text-[11px] px-2.5 py-0.5 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-700/60 font-bold">
-                Σ = {a, b}
-              </span>
-            </div>
-
-            <div class="space-y-3">
-              <div>
-                <label class="block text-[11px] font-mono text-slate-400 mb-1">TARGET LANGUAGE SIGNATURE</label>
-                <select id="select-target-lang" class="w-full bg-slate-900/90 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 font-mono focus:border-cyan-400 focus:outline-none">
-                  <!-- Populated dynamically -->
-                </select>
-                <p id="target-desc" class="text-xs text-slate-400 mt-1.5 leading-relaxed font-sans"></p>
-              </div>
-
-              <!-- Sampling Mode & Sample Count -->
-              <div class="grid grid-cols-2 gap-3 pt-1">
-                <div>
-                  <label class="block text-[10px] font-mono text-slate-400 mb-1">SAMPLING PROTOCOL</label>
-                  <select id="select-sampling-mode" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none font-mono">
-                    <option value="length_stratified" selected>Length-Stratified</option>
-                    <option value="uniform">Uniform Random</option>
-                    <option value="random_walk">DFA Random Walk</option>
-                    <option value="characteristic">Characteristic Sample</option>
-                  </select>
-                </div>
-                <div>
-                  <div class="flex items-center justify-between mb-1">
-                    <label class="text-[10px] font-mono text-slate-400">SAMPLE COUNT</label>
-                    <span id="val-sample-count" class="font-mono text-xs text-cyan-400 font-bold">35</span>
-                  </div>
-                  <input type="range" id="input-sample-count" min="8" max="150" value="35" class="w-full">
-                </div>
-              </div>
-
-              <!-- Max Length & Noise Rate -->
-              <div class="grid grid-cols-2 gap-3 pt-1">
-                <div>
-                  <div class="flex items-center justify-between mb-1">
-                    <label class="text-[10px] font-mono text-slate-400">MAX STRING LEN</label>
-                    <span id="val-max-length" class="font-mono text-xs text-cyan-400 font-bold">7</span>
-                  </div>
-                  <input type="range" id="input-max-length" min="3" max="12" value="7" class="w-full">
-                </div>
-                <div>
-                  <div class="flex items-center justify-between mb-1">
-                    <label class="text-[10px] font-mono text-slate-400">LABEL NOISE</label>
-                    <span id="val-noise-rate" class="font-mono text-xs text-rose-400 font-bold">0%</span>
-                  </div>
-                  <input type="range" id="input-noise-rate" min="0" max="25" value="0" step="1" class="w-full slider-rose">
-                </div>
-              </div>
-
-              <button id="btn-generate-data" class="w-full py-2 bg-slate-800/90 hover:bg-slate-700 text-slate-200 text-xs font-mono font-bold rounded-lg border border-slate-700 hover:border-cyan-500 transition flex items-center justify-center space-x-2">
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                <span>RE-SAMPLE TRAINING DATASET</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Interactive Evidence Board -->
-          <div class="hud-panel p-5 space-y-3.5">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center space-x-2">
-                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-200 font-display">Forensic Evidence Board</h3>
-                <span id="train-count" class="text-xs px-2 py-0.5 rounded-full bg-slate-800 text-cyan-300 font-mono font-bold">35</span>
-              </div>
-              <button id="btn-plant-clue" class="text-[10px] font-mono px-2 py-1 rounded bg-amber-950/80 border border-amber-700 text-amber-300 hover:bg-amber-900 transition flex items-center space-x-1">
-                <span>+ Plant Custom Clue</span>
-              </button>
-            </div>
-
-            <!-- Evidence Filter Tabs & Search -->
-            <div class="flex items-center gap-2">
-              <div class="flex bg-slate-950 p-0.5 rounded-lg border border-slate-800 text-[10px] font-mono">
-                <button class="evidence-filter-btn active px-2.5 py-1 rounded bg-cyan-950 text-cyan-300 font-bold" data-filter="all">ALL (<span id="filter-all-cnt">35</span>)</button>
-                <button class="evidence-filter-btn px-2.5 py-1 rounded text-emerald-400 hover:text-emerald-300" data-filter="pos">+POS (<span id="filter-pos-cnt">18</span>)</button>
-                <button class="evidence-filter-btn px-2.5 py-1 rounded text-rose-400 hover:text-rose-300" data-filter="neg">-NEG (<span id="filter-neg-cnt">17</span>)</button>
-              </div>
-              <input type="text" id="input-search-evidence" placeholder="Filter strings..." class="flex-1 bg-slate-900/90 border border-slate-800 rounded-lg px-2.5 py-1 text-xs font-mono text-cyan-300 focus:outline-none focus:border-cyan-500">
-            </div>
-
-            <!-- Labeled Evidence Cards List -->
-            <div id="training-examples-list" class="max-h-56 overflow-y-auto space-y-1.5 pr-1 font-mono text-xs">
-              <!-- Dynamically populated labeled evidence cards -->
-            </div>
-          </div>
-
-          <!-- Inference Algorithm Selector -->
-          <div class="hud-panel p-5 space-y-3.5">
-            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-200 font-display">Inference Engine Core</h3>
-            <div class="grid grid-cols-3 gap-2">
-              <button class="algo-btn active py-2 px-2.5 rounded-lg text-xs font-mono font-bold border border-cyan-500/80 bg-cyan-500/10 text-cyan-300 transition text-center" data-algo="edsm">
-                EDSM
-                <span class="block text-[9px] font-normal text-slate-400">Blue-Fringe</span>
-              </button>
-              <button class="algo-btn py-2 px-2.5 rounded-lg text-xs font-mono font-medium border border-slate-800 bg-slate-900 text-slate-400 transition text-center" data-algo="rpni">
-                RPNI
-                <span class="block text-[9px] font-normal text-slate-500">Greedy Shortlex</span>
-              </button>
-              <button class="algo-btn py-2 px-2.5 rounded-lg text-xs font-mono font-medium border border-slate-800 bg-slate-900 text-slate-400 transition text-center" data-algo="lstar">
-                Angluin L*
-                <span class="block text-[9px] font-normal text-slate-500">Oracle Queries</span>
-              </button>
-            </div>
-            <div class="p-2.5 rounded bg-slate-950/70 border border-slate-800/80">
-              <p id="algo-explainer" class="text-xs text-slate-300 italic leading-relaxed">
-                EDSM: Evaluates all blue-fringe candidate merges by label endorsement gain; excels under sparse sample data.
-              </p>
-            </div>
-          </div>
-
+    <!-- ------------------------------------------------------------------- -->
+    <!-- LEFT PANEL: Dataset Controls & Evidence Board (Collapsible)         -->
+    <!-- ------------------------------------------------------------------- -->
+    <aside id="left-panel" class="w-80 h-full border-r border-white/[0.07] bg-[#0b101c]/95 flex flex-col shrink-0 z-20 transition-all duration-200">
+      
+      <!-- Panel Header -->
+      <div class="h-10 px-3.5 border-b border-white/[0.07] flex items-center justify-between shrink-0 bg-white/[0.01]">
+        <div class="flex items-center space-x-1.5">
+          <span class="text-xs font-semibold text-slate-200">Dataset & Evidence</span>
+          <span id="train-count" class="text-[11px] font-mono px-1.5 py-0.2 rounded bg-white/[0.08] text-slate-300">35</span>
         </div>
-
-        <!-- Right Column: Interactive Graph HUD (7 cols) -->
-        <div class="lg:col-span-7 space-y-4">
-          <div class="hud-panel hud-bracket p-4 space-y-3 relative">
-            <div class="flex items-center justify-between">
-              <div class="flex items-center space-x-2.5">
-                <span class="h-2.5 w-2.5 rounded-full bg-emerald-400 beacon-pulse"></span>
-                <h2 class="text-sm font-bold uppercase tracking-wider text-slate-100 font-display">Inferred Automaton Topology</h2>
-                <span id="badge-states-count" class="text-xs px-2.5 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-800 font-mono font-bold">0 states</span>
-              </div>
-            </div>
-
-            <!-- Cytoscape Graph Canvas with Tactical Dock -->
-            <div class="relative canvas-crosshair">
-              <!-- Floating HUD Dock for Graph Tools -->
-              <div class="hud-dock">
-                <!-- Layout selector -->
-                <select id="select-graph-layout" class="bg-slate-900 border border-slate-700 text-slate-200 text-[10px] font-mono rounded px-2 py-1 focus:outline-none focus:border-cyan-400">
-                  <option value="cose" selected>Physics (COSE)</option>
-                  <option value="circle">Circle Layout</option>
-                  <option value="concentric">Concentric Radar</option>
-                  <option value="breadthfirst">Tree / Breadthfirst</option>
-                  <option value="grid">Tactical Grid</option>
-                </select>
-
-                <button id="btn-fit-graph" class="p-1 px-2 text-[10px] font-mono bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700 transition" title="Center & Fit View">
-                  Fit
-                </button>
-                <button id="btn-zoom-in" class="p-1 px-2 text-[10px] font-mono bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700 transition" title="Zoom In">
-                  +
-                </button>
-                <button id="btn-zoom-out" class="p-1 px-2 text-[10px] font-mono bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700 transition" title="Zoom Out">
-                  -
-                </button>
-                <button id="btn-export-png" class="p-1 px-2 text-[10px] font-mono bg-cyan-950 hover:bg-cyan-900 text-cyan-300 rounded border border-cyan-700 transition" title="Export High-Res PNG">
-                  Export PNG
-                </button>
-                <button id="btn-export-json" class="p-1 px-2 text-[10px] font-mono bg-slate-800 hover:bg-slate-700 text-slate-300 rounded border border-slate-700 transition" title="Export JSON Model">
-                  JSON
-                </button>
-              </div>
-
-              <!-- Main Canvas -->
-              <div id="cy-container"></div>
-            </div>
-
-            <!-- Legend & Graph Metrics Telemetry -->
-            <div class="flex flex-wrap items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800/80 gap-3 font-mono">
-              <div class="flex items-center space-x-4">
-                <span class="flex items-center space-x-1.5">
-                  <span class="h-3 w-3 rounded-full bg-cyan-500 border border-cyan-200 inline-block shadow-sm shadow-cyan-400"></span>
-                  <span class="text-slate-300">Start (q0)</span>
-                </span>
-                <span class="flex items-center space-x-1.5">
-                  <span class="h-3.5 w-3.5 rounded-full border-2 border-emerald-400 bg-emerald-950 inline-block ring-2 ring-emerald-500/80"></span>
-                  <span class="text-emerald-300 font-bold">Double-Ring Accept</span>
-                </span>
-                <span class="flex items-center space-x-1.5">
-                  <span class="h-3 w-3 rounded-full bg-slate-800 border border-slate-600 inline-block"></span>
-                  <span class="text-slate-400">Normal</span>
-                </span>
-              </div>
-              <div id="inference-meta" class="text-cyan-400 font-bold">
-                Merges: 0 | Steps: 0
-              </div>
-            </div>
-
-            <!-- State Inspector Card (appears on node click) -->
-            <div id="state-inspector-card" class="hidden p-3 bg-slate-950/80 border border-cyan-900 rounded-lg text-xs font-mono space-y-1">
-              <div class="flex items-center justify-between">
-                <span class="text-cyan-300 font-bold" id="inspect-state-id">Selected: q0</span>
-                <span class="text-slate-400" id="inspect-state-type">Type: Normal</span>
-              </div>
-              <div class="text-slate-400 text-[11px]" id="inspect-state-transitions">Transitions: --</div>
-            </div>
-
-          </div>
-        </div>
-
+        <button id="btn-plant-clue" class="text-[11px] text-sky-400 hover:text-sky-300 font-medium flex items-center space-x-1" title="Add Custom String">
+          <span>+ Add String</span>
+        </button>
       </div>
-    </div>
 
+      <!-- Dataset Knobs Section (Scrollable) -->
+      <div class="p-3.5 border-b border-white/[0.07] space-y-3 shrink-0 bg-white/[0.01]">
+        <!-- Target Description & Alphabet -->
+        <div>
+          <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
+            <span class="text-[10px] font-mono uppercase tracking-wider text-slate-500">Language Spec</span>
+            <span id="target-alphabet-badge" class="font-mono text-[10px] text-sky-400">Σ = {a, b}</span>
+          </div>
+          <p id="target-desc" class="text-xs text-slate-300 leading-snug line-clamp-2"></p>
+        </div>
 
-    <!-- =================================================================== -->
-    <!-- TAB 2: STRING TRAVERSAL RADAR & SIMULATOR                           -->
-    <!-- =================================================================== -->
-    <div id="tab-simulator" class="tab-panel hidden space-y-6">
-      <div class="hud-panel hud-bracket p-6 space-y-6">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/80 pb-4">
+        <!-- Sampling Mode & Size -->
+        <div class="grid grid-cols-2 gap-2.5">
           <div>
-            <h2 class="text-base font-bold text-slate-100 font-display">Forensic String Traversal & State Radar</h2>
-            <p class="text-xs text-slate-400 mt-0.5">Input an inquiry string to inspect the exact transition path and test DFA acceptance criteria.</p>
+            <label class="block text-[10px] font-mono uppercase text-slate-500 mb-1">Sampling</label>
+            <select id="select-sampling-mode" class="w-full bg-white/[0.04] border border-white/[0.08] rounded px-2 py-1 text-xs text-slate-200 focus:outline-none">
+              <option value="length_stratified" selected>Stratified</option>
+              <option value="uniform">Uniform</option>
+              <option value="random_walk">Random Walk</option>
+              <option value="characteristic">Characteristic</option>
+            </select>
           </div>
-          <!-- Quick Preset String Buttons -->
-          <div class="flex items-center space-x-1.5 font-mono text-xs">
-            <span class="text-slate-500 text-[10px]">QUICK PROBES:</span>
-            <button class="btn-quick-string px-2 py-0.5 rounded bg-slate-800 text-cyan-300 border border-slate-700 hover:border-cyan-500" data-str="">ε (empty)</button>
-            <button class="btn-quick-string px-2 py-0.5 rounded bg-slate-800 text-cyan-300 border border-slate-700 hover:border-cyan-500" data-str="ab">"ab"</button>
-            <button class="btn-quick-string px-2 py-0.5 rounded bg-slate-800 text-cyan-300 border border-slate-700 hover:border-cyan-500" data-str="aab">"aab"</button>
-            <button class="btn-quick-string px-2 py-0.5 rounded bg-slate-800 text-cyan-300 border border-slate-700 hover:border-cyan-500" data-str="ba">"ba"</button>
-          </div>
-        </div>
-
-        <div class="flex flex-col sm:flex-row gap-3">
-          <input type="text" id="input-test-string" placeholder="Type test string (e.g. aab, 0101, etc.)..." class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-4 py-2.5 font-mono text-sm text-cyan-300 focus:outline-none focus:border-cyan-400">
-          <button id="btn-step-simulate" class="hud-btn hud-btn-secondary px-4 py-2 text-xs">
-            Step Once
-          </button>
-          <button id="btn-play-simulate" class="hud-btn hud-btn-primary px-5 py-2 text-xs">
-            Animate Traversal
-          </button>
-          <button id="btn-reset-simulate" class="hud-btn hud-btn-secondary px-3 py-2 text-xs">
-            Reset
-          </button>
-        </div>
-
-        <!-- Simulation Progress & Result Banner -->
-        <div id="sim-result-card" class="bg-slate-950/80 border border-slate-800 rounded-xl p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div class="space-y-1.5">
-            <span class="text-xs text-slate-400 font-mono font-medium uppercase tracking-wider">Active Path Trace Telemetry:</span>
-            <div id="sim-path-display" class="font-mono text-sm text-slate-200 flex items-center space-x-1.5 flex-wrap">
-              <span class="text-slate-500">Ready to simulate</span>
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-[10px] font-mono uppercase text-slate-500">Sample Count</label>
+              <span id="val-sample-count" class="font-mono text-xs text-slate-300">35</span>
             </div>
-          </div>
-          <div id="sim-verdict-badge" class="px-5 py-2 rounded-full text-xs font-bold font-mono tracking-wider bg-slate-800 text-slate-400 border border-slate-700">
-            AWAITING INPUT
+            <input type="range" id="input-sample-count" min="8" max="150" value="35">
           </div>
         </div>
 
-        <!-- Canvas Mirror -->
-        <div class="relative canvas-crosshair">
-          <div id="cy-sim-container"></div>
-        </div>
-      </div>
-    </div>
-
-
-    <!-- =================================================================== -->
-    <!-- TAB 3: CRIME SCENE MERGE REPLAY SCRUBBER                            -->
-    <!-- =================================================================== -->
-    <div id="tab-replay" class="tab-panel hidden space-y-6">
-      <div class="hud-panel hud-bracket p-6 space-y-5">
-        <div class="flex items-center justify-between border-b border-slate-800/80 pb-4">
+        <!-- Max Length & Noise Rate -->
+        <div class="grid grid-cols-2 gap-2.5">
           <div>
-            <h2 class="text-base font-bold text-slate-100 font-display">PTA Collapse & Merge Replay Timeline</h2>
-            <p class="text-xs text-slate-400 mt-0.5">Scrub through the grammatical inference execution timeline to watch the Prefix Tree Acceptor fold state-by-state.</p>
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-[10px] font-mono uppercase text-slate-500">Max Length</label>
+              <span id="val-max-length" class="font-mono text-xs text-slate-300">7</span>
+            </div>
+            <input type="range" id="input-max-length" min="3" max="12" value="7">
           </div>
-          <span id="replay-step-counter" class="text-xs font-mono px-3.5 py-1.5 bg-cyan-950/80 text-cyan-300 border border-cyan-700 rounded-full font-bold">
-            Step 0 / 0
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-[10px] font-mono uppercase text-slate-500">Label Noise</label>
+              <span id="val-noise-rate" class="font-mono text-xs text-rose-400">0%</span>
+            </div>
+            <input type="range" id="input-noise-rate" min="0" max="25" value="0" step="1">
+          </div>
+        </div>
+
+        <button id="btn-generate-data" class="w-full btn-workstation py-1 text-xs justify-center text-slate-200">
+          Re-sample Training Set
+        </button>
+      </div>
+
+      <!-- Evidence Filter & Search Bar -->
+      <div class="p-2.5 border-b border-white/[0.07] flex items-center gap-1.5 shrink-0 bg-white/[0.01]">
+        <div class="segmented-control shrink-0">
+          <button class="evidence-filter-btn segmented-btn active" data-filter="all">All</button>
+          <button class="evidence-filter-btn segmented-btn text-emerald-400" data-filter="pos">+Pos</button>
+          <button class="evidence-filter-btn segmented-btn text-rose-400" data-filter="neg">-Neg</button>
+        </div>
+        <input type="text" id="input-search-evidence" placeholder="Filter strings..." class="flex-1 bg-white/[0.04] border border-white/[0.08] rounded px-2 py-1 text-xs font-mono text-slate-200 focus:outline-none focus:border-sky-400">
+      </div>
+
+      <!-- Evidence String List (Flex-1 scrollable) -->
+      <div id="training-examples-list" class="flex-1 overflow-y-auto p-2.5 space-y-1">
+        <!-- Dynamically populated evidence rows -->
+      </div>
+
+    </aside>
+
+
+    <!-- ------------------------------------------------------------------- -->
+    <!-- CENTER: Expansive Central Automata Canvas (Hero)                    -->
+    <!-- ------------------------------------------------------------------- -->
+    <div class="relative flex-1 h-full canvas-backdrop overflow-hidden flex flex-col">
+      
+      <!-- Graph Canvas Container -->
+      <div class="relative flex-1 w-full h-full">
+        <div id="cy-container"></div>
+
+        <!-- Floating Graph Tools Dock (Top Right) -->
+        <div class="floating-dock absolute top-3.5 right-3.5 p-1 flex items-center space-x-1">
+          <!-- Layout Switcher -->
+          <select id="select-graph-layout" class="bg-transparent border-0 text-slate-300 text-xs font-medium px-2 py-1 focus:outline-none cursor-pointer">
+            <option value="cose" selected class="bg-slate-900">Physics (COSE)</option>
+            <option value="circle" class="bg-slate-900">Circle Layout</option>
+            <option value="concentric" class="bg-slate-900">Concentric Layers</option>
+            <option value="breadthfirst" class="bg-slate-900">Hierarchical Tree</option>
+            <option value="grid" class="bg-slate-900">Compact Grid</option>
+          </select>
+
+          <div class="h-4 w-px bg-white/[0.1] mx-0.5"></div>
+
+          <button id="btn-fit-graph" class="btn-workstation p-1 px-2 text-xs" title="Fit to Viewport">Fit</button>
+          <button id="btn-zoom-in" class="btn-workstation p-1 px-1.5 text-xs" title="Zoom In">+</button>
+          <button id="btn-zoom-out" class="btn-workstation p-1 px-1.5 text-xs" title="Zoom Out">-</button>
+          
+          <div class="h-4 w-px bg-white/[0.1] mx-0.5"></div>
+
+          <button id="btn-export-png" class="btn-workstation p-1 px-2 text-xs" title="Export High-Res PNG">PNG</button>
+          <button id="btn-export-json" class="btn-workstation p-1 px-2 text-xs" title="Export Model JSON">JSON</button>
+        </div>
+
+        <!-- Minimal Legend (Bottom Left Floating Pill) -->
+        <div class="floating-dock absolute bottom-3.5 left-3.5 px-3 py-1.5 flex items-center space-x-3 text-xs text-slate-400">
+          <span class="flex items-center space-x-1.5">
+            <span class="h-2.5 w-2.5 rounded-full bg-sky-400 border border-sky-200 inline-block"></span>
+            <span class="text-slate-300">Start (q0)</span>
           </span>
+          <span class="flex items-center space-x-1.5">
+            <span class="h-3 w-3 rounded-full border-2 border-emerald-400 bg-emerald-950/60 inline-block"></span>
+            <span class="text-emerald-400 font-medium">Double-Ring Accept</span>
+          </span>
+          <span class="flex items-center space-x-1.5">
+            <span class="h-2.5 w-2.5 rounded-full bg-slate-700 inline-block"></span>
+            <span class="text-slate-400">Normal</span>
+          </span>
+          <span class="text-slate-600">|</span>
+          <span id="badge-states-count" class="font-mono text-slate-300">0 states</span>
+          <span id="inference-meta" class="font-mono text-slate-400 text-[11px]"></span>
         </div>
 
-        <!-- Timeline Scrubber Slider with Controls -->
-        <div class="space-y-3 bg-slate-950/70 p-4 rounded-xl border border-slate-800">
-          <div class="flex items-center space-x-3">
-            <button id="btn-replay-prev" class="hud-btn hud-btn-secondary px-3 py-1.5 text-xs">◀ Prev</button>
+        <!-- --------------------------------------------------------------- -->
+        <!-- FLOATING DRAWER: String Traversal Simulator (When active)       -->
+        <!-- --------------------------------------------------------------- -->
+        <div id="sim-floating-dock" class="floating-dock absolute bottom-3.5 left-1/2 -translate-x-1/2 w-[92%] max-w-2xl p-3 space-y-2 hidden">
+          <div class="flex items-center justify-between text-xs">
+            <div class="flex items-center space-x-2">
+              <span class="font-medium text-slate-200">Interactive String Simulator</span>
+              <div id="sim-verdict-badge" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-white/[0.08] text-slate-400">
+                AWAITING INPUT
+              </div>
+            </div>
+            <!-- Quick Probes -->
+            <div class="flex items-center space-x-1 text-[11px] font-mono">
+              <span class="text-slate-500 text-[10px]">PROBE:</span>
+              <button class="btn-quick-string px-1.5 py-0.5 rounded bg-white/[0.04] hover:bg-white/[0.08] text-slate-300" data-str="">ε (empty)</button>
+              <button class="btn-quick-string px-1.5 py-0.5 rounded bg-white/[0.04] hover:bg-white/[0.08] text-slate-300" data-str="ab">"ab"</button>
+              <button class="btn-quick-string px-1.5 py-0.5 rounded bg-white/[0.04] hover:bg-white/[0.08] text-slate-300" data-str="aab">"aab"</button>
+              <button class="btn-quick-string px-1.5 py-0.5 rounded bg-white/[0.04] hover:bg-white/[0.08] text-slate-300" data-str="ba">"ba"</button>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <input type="text" id="input-test-string" placeholder="Type test string..." class="flex-1 bg-white/[0.04] border border-white/[0.08] rounded px-3 py-1.5 font-mono text-xs text-sky-400 focus:outline-none focus:border-sky-400">
+            <button id="btn-step-simulate" class="btn-workstation px-3 py-1.5 text-xs">Step</button>
+            <button id="btn-play-simulate" class="btn-workstation primary px-3.5 py-1.5 text-xs">Animate</button>
+            <button id="btn-reset-simulate" class="btn-workstation px-2.5 py-1.5 text-xs">Reset</button>
+          </div>
+
+          <!-- Active Path Breadcrumbs -->
+          <div id="sim-path-display" class="font-mono text-xs text-slate-300 flex items-center space-x-1 flex-wrap pt-0.5">
+            <span class="text-slate-500 text-[11px]">Ready to simulate. Enter input string above.</span>
+          </div>
+        </div>
+
+        <!-- --------------------------------------------------------------- -->
+        <!-- FLOATING DRAWER: PTA Replay Scrubber (When active)              -->
+        <!-- --------------------------------------------------------------- -->
+        <div id="replay-floating-dock" class="floating-dock absolute bottom-3.5 left-1/2 -translate-x-1/2 w-[92%] max-w-2xl p-3 space-y-2 hidden">
+          <div class="flex items-center justify-between text-xs">
+            <div class="flex items-center space-x-2 font-mono">
+              <span class="font-semibold text-slate-200">PTA State-Merge Timeline</span>
+              <span id="replay-step-type" class="px-2 py-0.5 rounded bg-sky-950 text-sky-300 border border-sky-800 text-[10px] font-bold uppercase">INIT</span>
+            </div>
+            <span id="replay-step-counter" class="font-mono text-slate-400 text-xs">Step 0 / 0</span>
+          </div>
+
+          <div class="flex items-center space-x-2.5">
+            <button id="btn-replay-prev" class="btn-workstation p-1 px-2.5 text-xs">◀ Prev</button>
             <input type="range" id="replay-scrubber" min="0" max="0" value="0" class="flex-1 cursor-pointer">
-            <button id="btn-replay-next" class="hud-btn hud-btn-secondary px-3 py-1.5 text-xs">Next ▶</button>
-            <button id="btn-replay-play" class="hud-btn hud-btn-primary px-4 py-1.5 text-xs">▶ Auto-Play</button>
+            <button id="btn-replay-next" class="btn-workstation p-1 px-2.5 text-xs">Next ▶</button>
+            <button id="btn-replay-play" class="btn-workstation primary p-1 px-3 text-xs">▶ Play</button>
           </div>
-          <div class="flex items-center justify-between text-[11px] font-mono text-slate-500">
-            <span>START: INITIAL PTA</span>
-            <span>END: CONVERGED MINIMAL HYPOTHESIS</span>
-          </div>
+
+          <p id="replay-step-desc" class="text-xs text-slate-300 font-mono truncate pt-0.5">
+            Run inference to generate PTA merge sequence.
+          </p>
         </div>
 
-        <!-- Step Description Forensic Card -->
-        <div id="replay-step-card" class="p-4 bg-slate-900/60 border border-cyan-900/60 rounded-xl text-xs space-y-2">
-          <div class="flex items-center justify-between font-mono">
-            <span id="replay-step-type" class="px-2.5 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-700 font-bold uppercase">INIT</span>
-            <span id="replay-state-count" class="text-slate-400 font-bold">States: --</span>
-          </div>
-          <p id="replay-step-desc" class="text-slate-200 font-medium leading-relaxed">Run inference on Tab 1 to populate the step history.</p>
-        </div>
-
-        <!-- Replay Graph Canvas -->
-        <div class="relative canvas-crosshair">
-          <div id="cy-replay-container"></div>
-        </div>
       </div>
-    </div>
 
-
-    <!-- =================================================================== -->
-    <!-- TAB 4: GROUND TRUTH DIFF & POLYGRAPH                                -->
-    <!-- =================================================================== -->
-    <div id="tab-compare" class="tab-panel hidden space-y-6">
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-        <div class="lg:col-span-4 space-y-4">
-          <div class="hud-panel p-5 space-y-4">
-            <h2 class="text-xs font-bold uppercase tracking-wider text-slate-200 font-display">Equivalence Polygraph</h2>
-
-            <div id="compare-verdict-card" class="p-4 rounded-xl border text-center space-y-2 bg-slate-950">
-              <span id="compare-verdict-pill" class="inline-block px-3.5 py-1.5 rounded-full text-xs font-bold font-mono bg-slate-800 text-slate-400 border border-slate-700">
-                AWAITING COMPARISON
-              </span>
-              <p id="compare-counterexample" class="text-xs font-mono text-rose-400 leading-relaxed"></p>
-            </div>
-
-            <div class="grid grid-cols-2 gap-3 text-xs font-mono">
-              <div class="p-3 bg-slate-950/80 rounded-lg border border-slate-800">
-                <span class="text-slate-400 block text-[10px] uppercase">Learned States</span>
-                <span id="comp-learned-states" class="text-lg text-cyan-400 font-bold">--</span>
-              </div>
-              <div class="p-3 bg-slate-950/80 rounded-lg border border-slate-800">
-                <span class="text-slate-400 block text-[10px] uppercase">True Min States</span>
-                <span id="comp-minimal-states" class="text-lg text-emerald-400 font-bold">--</span>
-              </div>
-              <div class="p-3 bg-slate-950/80 rounded-lg border border-slate-800">
-                <span class="text-slate-400 block text-[10px] uppercase">Generalization Acc</span>
-                <span id="comp-accuracy" class="text-lg text-slate-100 font-bold">--</span>
-              </div>
-              <div class="p-3 bg-slate-950/80 rounded-lg border border-slate-800">
-                <span class="text-slate-400 block text-[10px] uppercase">Forensic F1</span>
-                <span id="comp-f1" class="text-lg text-slate-100 font-bold">--</span>
-              </div>
-            </div>
-
-            <button id="btn-recompare" class="hud-btn hud-btn-secondary w-full py-2 text-xs">
-              Re-run Equivalence Verification
-            </button>
+      <!-- ----------------------------------------------------------------- -->
+      <!-- OVERLAY VIEW: Equivalence Diff & Reference Comparison             -->
+      <!-- ----------------------------------------------------------------- -->
+      <div id="view-diff-overlay" class="absolute inset-0 bg-[#080c14] z-30 p-4 space-y-3 hidden flex flex-col overflow-y-auto">
+        <div class="flex items-center justify-between border-b border-white/[0.08] pb-2 shrink-0">
+          <div>
+            <h3 class="text-sm font-semibold text-white">Equivalence Polygraph & Ground-Truth Reference DFA</h3>
+            <p class="text-xs text-slate-400">Compares learned candidate machine against minimal theoretical reference DFA.</p>
           </div>
-
-          <!-- Red Flags Disagreements List -->
-          <div class="hud-panel p-5 space-y-3">
-            <h3 class="text-xs font-bold uppercase tracking-wider text-rose-400 font-display">Disagreeing Strings (Contaminations)</h3>
-            <div id="disagreements-list" class="max-h-48 overflow-y-auto space-y-1.5 font-mono text-xs">
-              <p class="text-slate-500 italic">No disagreements detected.</p>
-            </div>
-          </div>
+          <button id="btn-close-diff-view" class="btn-workstation text-xs">Close Diff</button>
         </div>
 
-        <!-- Reference Machine Visualizer -->
-        <div class="lg:col-span-8 space-y-4">
-          <div class="hud-panel hud-bracket p-4 space-y-3">
-            <div class="flex items-center justify-between">
-              <h3 class="text-xs font-bold uppercase tracking-wider text-emerald-400 font-display">Ground-Truth Minimal Reference DFA</h3>
-              <span id="ref-name-badge" class="text-xs font-mono px-2.5 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-700 font-bold"></span>
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1">
+          <!-- Left Diff Stats -->
+          <div class="lg:col-span-4 space-y-3">
+            <div class="glass-panel rounded-lg p-4 space-y-3">
+              <div id="compare-verdict-card" class="p-3 rounded-md text-center bg-white/[0.02] border border-white/[0.06] space-y-1">
+                <span id="compare-verdict-pill" class="inline-block px-2.5 py-1 rounded text-xs font-mono font-bold bg-white/[0.08] text-slate-300">
+                  AWAITING COMPARISON
+                </span>
+                <p id="compare-counterexample" class="text-xs font-mono text-rose-400"></p>
+              </div>
+
+              <div class="grid grid-cols-2 gap-2 text-xs font-mono">
+                <div class="p-2.5 bg-white/[0.02] rounded border border-white/[0.06]">
+                  <span class="text-slate-500 block text-[10px]">Learned States</span>
+                  <span id="comp-learned-states" class="text-base text-sky-400 font-bold">--</span>
+                </div>
+                <div class="p-2.5 bg-white/[0.02] rounded border border-white/[0.06]">
+                  <span class="text-slate-500 block text-[10px]">True Min States</span>
+                  <span id="comp-minimal-states" class="text-base text-emerald-400 font-bold">--</span>
+                </div>
+                <div class="p-2.5 bg-white/[0.02] rounded border border-white/[0.06]">
+                  <span class="text-slate-500 block text-[10px]">Test Accuracy</span>
+                  <span id="comp-accuracy" class="text-base text-slate-100 font-bold">--</span>
+                </div>
+                <div class="p-2.5 bg-white/[0.02] rounded border border-white/[0.06]">
+                  <span class="text-slate-500 block text-[10px]">F1 Score</span>
+                  <span id="comp-f1" class="text-base text-slate-100 font-bold">--</span>
+                </div>
+              </div>
+
+              <button id="btn-recompare" class="w-full btn-workstation py-1.5 text-xs justify-center">
+                Re-evaluate Equivalence
+              </button>
             </div>
-            <div class="relative canvas-crosshair">
+
+            <!-- Disagreements -->
+            <div class="glass-panel rounded-lg p-3 space-y-2">
+              <span class="text-xs font-semibold text-slate-300">Disagreeing Counterexamples</span>
+              <div id="disagreements-list" class="max-h-56 overflow-y-auto space-y-1 font-mono text-xs">
+                <p class="text-slate-500 italic text-xs">No disagreements found.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right Minimal Reference DFA Canvas -->
+          <div class="lg:col-span-8 glass-panel rounded-lg p-3 flex flex-col relative h-[520px]">
+            <div class="flex items-center justify-between pb-2 border-b border-white/[0.06] shrink-0">
+              <span class="text-xs font-semibold text-slate-200">Ground-Truth Minimal Reference Machine</span>
+              <span id="ref-name-badge" class="font-mono text-xs text-emerald-400"></span>
+            </div>
+            <div class="relative flex-1 w-full h-full">
               <div id="cy-reference-container"></div>
             </div>
           </div>
         </div>
-
       </div>
+
+      <!-- ----------------------------------------------------------------- -->
+      <!-- OVERLAY VIEW: Benchmark Labs & Empirical Plots                    -->
+      <!-- ----------------------------------------------------------------- -->
+      <div id="view-analytics-overlay" class="absolute inset-0 bg-[#080c14] z-30 p-4 space-y-4 hidden flex flex-col overflow-y-auto">
+        <div class="flex items-center justify-between border-b border-white/[0.08] pb-2 shrink-0">
+          <div>
+            <h3 class="text-sm font-semibold text-white">Empirical Benchmark Analytics</h3>
+            <p class="text-xs text-slate-400">Multi-seed experiments measuring sample complexity scaling, noise degradation, and active querying.</p>
+          </div>
+          <div class="flex items-center space-x-2">
+            <button id="btn-run-learning-curve" class="btn-workstation primary text-xs">Run Scaling Curves</button>
+            <button id="btn-run-noise-study" class="btn-workstation text-xs">Run Noise Study</button>
+            <button id="btn-run-active-study" class="btn-workstation text-xs">Run Active Oracle</button>
+            <button id="btn-close-analytics-view" class="btn-workstation text-xs">Close</button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1">
+          <!-- Chart 1: Learning Curve -->
+          <div class="glass-panel rounded-lg p-3.5 space-y-2 flex flex-col">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-slate-200">Sample Complexity</span>
+              <span class="text-[10px] font-mono text-sky-400">EDSM vs RPNI</span>
+            </div>
+            <div class="relative flex-1 min-h-[220px]">
+              <canvas id="chart-learning-curve"></canvas>
+            </div>
+          </div>
+
+          <!-- Chart 2: Noise Study -->
+          <div class="glass-panel rounded-lg p-3.5 space-y-2 flex flex-col">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-slate-200">Noise Sensitivity</span>
+              <span class="text-[10px] font-mono text-rose-400">0% - 20% Flips</span>
+            </div>
+            <div class="relative flex-1 min-h-[220px]">
+              <canvas id="chart-noise-study"></canvas>
+            </div>
+          </div>
+
+          <!-- Chart 3: Active Learning -->
+          <div class="glass-panel rounded-lg p-3.5 space-y-2 flex flex-col">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-semibold text-slate-200">Active vs Random</span>
+              <span class="text-[10px] font-mono text-amber-400">Angluin MAT</span>
+            </div>
+            <div class="relative flex-1 min-h-[220px]">
+              <canvas id="chart-active-study"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </div>
 
 
-    <!-- =================================================================== -->
-    <!-- TAB 5: FORENSIC BENCHMARK LAB & PLOTS                               -->
-    <!-- =================================================================== -->
-    <div id="tab-experiments" class="tab-panel hidden space-y-6">
-      <div class="hud-panel p-5 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h2 class="text-base font-bold text-slate-100 font-display">Forensic Benchmark Stress Testing Laboratory</h2>
-          <p class="text-xs text-slate-400 mt-0.5">Empirical validation: Sample complexity scaling, label noise resistance, and active query reduction.</p>
-        </div>
-        <div class="flex items-center space-x-2.5">
-          <button id="btn-run-learning-curve" class="hud-btn hud-btn-primary text-xs py-1.5 px-3">
-            Run Scaling Curves
-          </button>
-          <button id="btn-run-noise-study" class="hud-btn hud-btn-secondary text-xs py-1.5 px-3 border-rose-500 text-rose-300">
-            Run Noise Study
-          </button>
-          <button id="btn-run-active-study" class="hud-btn hud-btn-amber text-xs py-1.5 px-3">
-            Run Active Oracle
-          </button>
-        </div>
+    <!-- ------------------------------------------------------------------- -->
+    <!-- RIGHT PANEL: State & Model Properties Inspector (Collapsible)       -->
+    <!-- ------------------------------------------------------------------- -->
+    <aside id="right-panel" class="w-72 h-full border-l border-white/[0.07] bg-[#0b101c]/95 flex flex-col shrink-0 z-20 transition-all duration-200">
+      
+      <!-- Panel Header -->
+      <div class="h-10 px-3.5 border-b border-white/[0.07] flex items-center justify-between shrink-0 bg-white/[0.01]">
+        <span class="text-xs font-semibold text-slate-200">Automaton Properties</span>
+        <span class="text-[10px] font-mono text-slate-500">DFA INSPECTOR</span>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <!-- Learning Curve Chart -->
-        <div class="hud-panel p-5 space-y-3">
-          <h3 class="text-xs font-bold text-slate-200 flex items-center justify-between font-display">
-            <span>Learning Curves (Accuracy vs Size)</span>
-            <span class="text-[10px] text-cyan-400 font-mono">EDSM vs RPNI</span>
-          </h3>
-          <div class="h-64">
-            <canvas id="chart-learning-curve"></canvas>
+      <div class="p-3.5 space-y-4 overflow-y-auto flex-1">
+        
+        <!-- Model Summary Metrics -->
+        <div class="space-y-2">
+          <span class="text-[10px] font-mono uppercase tracking-wider text-slate-500">Model Telemetry</span>
+          <div class="grid grid-cols-2 gap-2 text-xs font-mono">
+            <div class="p-2 bg-white/[0.02] border border-white/[0.06] rounded">
+              <span class="text-slate-500 text-[10px] block">States</span>
+              <span id="inspect-total-states" class="text-sm font-bold text-sky-400">--</span>
+            </div>
+            <div class="p-2 bg-white/[0.02] border border-white/[0.06] rounded">
+              <span class="text-slate-500 text-[10px] block">Transitions</span>
+              <span id="inspect-total-transitions" class="text-sm font-bold text-slate-200">--</span>
+            </div>
+            <div class="p-2 bg-white/[0.02] border border-white/[0.06] rounded">
+              <span class="text-slate-500 text-[10px] block">Alphabet</span>
+              <span id="inspect-alphabet" class="text-xs font-bold text-slate-200">--</span>
+            </div>
+            <div class="p-2 bg-white/[0.02] border border-white/[0.06] rounded">
+              <span class="text-slate-500 text-[10px] block">State Merges</span>
+              <span id="inspect-merges" class="text-sm font-bold text-amber-400">0</span>
+            </div>
           </div>
         </div>
 
-        <!-- Noise Tolerance Chart -->
-        <div class="hud-panel p-5 space-y-3">
-          <h3 class="text-xs font-bold text-slate-200 flex items-center justify-between font-display">
-            <span>Noise Tolerance (0% - 20%)</span>
-            <span class="text-[10px] text-rose-400 font-mono">Collapse vs Graceful</span>
-          </h3>
-          <div class="h-64">
-            <canvas id="chart-noise-study"></canvas>
+        <!-- Selected Node Inspector -->
+        <div class="space-y-2 pt-2 border-t border-white/[0.07]">
+          <span class="text-[10px] font-mono uppercase tracking-wider text-slate-500">Selected State</span>
+          <div id="inspector-node-empty" class="p-3 rounded bg-white/[0.02] border border-white/[0.06] text-xs text-slate-500 text-center italic">
+            Click any node on the graph canvas to inspect its transition formula.
+          </div>
+          <div id="inspector-node-card" class="hidden p-3 rounded bg-white/[0.03] border border-white/[0.08] space-y-2 text-xs font-mono">
+            <div class="flex items-center justify-between">
+              <span id="inspect-state-id" class="font-bold text-sky-400 text-sm">q0</span>
+              <span id="inspect-state-type" class="text-[10px] px-1.5 py-0.5 rounded bg-white/[0.08] text-slate-300">Start</span>
+            </div>
+            <div>
+              <span class="text-slate-500 text-[10px] block mb-1">Outgoing Transitions:</span>
+              <div id="inspect-transitions-list" class="space-y-1 text-slate-200 text-xs">
+                <!-- Transitions inserted here -->
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- Active vs Random Chart -->
-        <div class="hud-panel p-5 space-y-3">
-          <h3 class="text-xs font-bold text-slate-200 flex items-center justify-between font-display">
-            <span>Active Learning vs Random</span>
-            <span class="text-[10px] text-amber-400 font-mono">Angluin Oracle</span>
-          </h3>
-          <div class="h-64">
-            <canvas id="chart-active-study"></canvas>
+        <!-- Equivalence Polygraph Preview -->
+        <div class="space-y-2 pt-2 border-t border-white/[0.07]">
+          <span class="text-[10px] font-mono uppercase tracking-wider text-slate-500">Generalization</span>
+          <div class="p-2.5 rounded bg-white/[0.02] border border-white/[0.06] space-y-1.5 text-xs font-mono">
+            <div class="flex justify-between">
+              <span class="text-slate-400">Accuracy:</span>
+              <span id="inspect-accuracy-preview" class="font-bold text-emerald-400">--</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-400">F1 Score:</span>
+              <span id="inspect-f1-preview" class="font-bold text-slate-200">--</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-400">Equivalent:</span>
+              <span id="inspect-equiv-preview" class="font-bold text-slate-400">--</span>
+            </div>
           </div>
         </div>
+
+        <!-- Algorithm Note -->
+        <div class="p-2.5 rounded bg-white/[0.02] border border-white/[0.06] text-[11px] text-slate-400 leading-relaxed">
+          <span class="font-medium text-slate-300 block mb-0.5">Algorithm Note:</span>
+          <span id="algo-explainer">EDSM evaluates candidate merges by global evidence endorsement gain.</span>
+        </div>
+
       </div>
-    </div>
+
+    </aside>
 
   </main>
 
   <!-- ===================================================================== -->
-  <!-- Case Dossier Vault Modal                                              -->
+  <!-- Case Studies Dossier Modal (Linear / Studio Clean Modal)              -->
   <!-- ===================================================================== -->
-  <div id="modal-dossier-vault" class="dossier-modal-backdrop hidden">
-    <div class="max-w-3xl w-full bg-slate-950 border border-amber-500/40 rounded-xl p-6 space-y-5 shadow-2xl relative">
-      <!-- Modal Header -->
-      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-        <div class="flex items-center space-x-2.5">
-          <span class="stamp-classified border-amber-500 text-amber-400 bg-amber-950/40">CLASSIFIED DOSSIER</span>
-          <h2 class="text-base font-bold text-slate-100 font-display">Case File Vault & Mystery Stories</h2>
+  <div id="modal-dossier-vault" class="modal-overlay hidden">
+    <div class="max-w-2xl w-full bg-[#0d1321] border border-white/[0.12] rounded-lg p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-white/[0.08] pb-3">
+        <div>
+          <h3 class="text-sm font-semibold text-white">Curated Research Case Studies</h3>
+          <p class="text-xs text-slate-400 mt-0.5">Select a presentation scenario demonstrating convergence, noise resistance, or active learning.</p>
         </div>
-        <button id="btn-close-dossier" class="text-slate-400 hover:text-slate-100 text-lg font-mono">&times;</button>
+        <button id="btn-close-dossier" class="text-slate-400 hover:text-white text-base">&times;</button>
       </div>
 
-      <p class="text-xs text-slate-300">
-        Select a preconfigured case investigation to inspect how grammatical inference algorithms uncover regular grammars under edge cases, noise, and active queries.
-      </p>
-
-      <!-- Case Dossier Cards Grid -->
-      <div id="dossier-cards-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto pr-1">
+      <div id="dossier-cards-grid" class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto pr-1">
         <!-- Injected dynamically -->
       </div>
     </div>
   </div>
 
   <!-- ===================================================================== -->
-  <!-- Plant Clue / Custom Evidence Modal                                    -->
+  <!-- Add String / Plant Custom Clue Modal                                  -->
   <!-- ===================================================================== -->
-  <div id="modal-plant-clue" class="dossier-modal-backdrop hidden">
-    <div class="max-w-md w-full bg-slate-950 border border-cyan-500/50 rounded-xl p-6 space-y-4 shadow-2xl">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-2">
-        <h3 class="text-sm font-bold text-cyan-300 font-display">Plant Forensic Clue</h3>
-        <button id="btn-close-plant-clue" class="text-slate-400 hover:text-slate-100">&times;</button>
+  <div id="modal-plant-clue" class="modal-overlay hidden">
+    <div class="max-w-md w-full bg-[#0d1321] border border-white/[0.12] rounded-lg p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-white/[0.08] pb-2.5">
+        <h3 class="text-sm font-semibold text-white">Add Custom Training String</h3>
+        <button id="btn-close-plant-clue" class="text-slate-400 hover:text-white text-base">&times;</button>
       </div>
       <p class="text-xs text-slate-400">
-        Inject a manual positive or negative string into the current evidence pool to test how the learner adapts its hypothesis.
+        Inject an arbitrary labeled string to test how the inference engine adapts its hypothesis.
       </p>
       <div class="space-y-3">
         <div>
-          <label class="block text-xs font-mono text-slate-300 mb-1">CLUE STRING (leave empty for ε):</label>
-          <input type="text" id="input-new-clue-string" placeholder="e.g. aab, b, a" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs font-mono text-cyan-300 focus:outline-none focus:border-cyan-400">
+          <label class="block text-xs font-mono text-slate-300 mb-1">STRING (leave empty for ε):</label>
+          <input type="text" id="input-new-clue-string" placeholder="e.g. aab, b, a" class="w-full bg-white/[0.04] border border-white/[0.08] rounded px-3 py-1.5 text-xs font-mono text-sky-400 focus:outline-none focus:border-sky-400">
         </div>
         <div>
-          <label class="block text-xs font-mono text-slate-300 mb-1">CLASSIFICATION LABEL:</label>
+          <label class="block text-xs font-mono text-slate-300 mb-1">LABEL:</label>
           <div class="grid grid-cols-2 gap-2">
-            <button type="button" id="btn-label-pos" class="hud-btn text-xs py-2 border border-emerald-500 bg-emerald-950/60 text-emerald-300 font-bold active-label">
-              + POS (In-Language)
+            <button type="button" id="btn-label-pos" class="btn-workstation py-2 text-xs font-medium border-emerald-500/50 bg-emerald-500/10 text-emerald-400">
+              + Positive (In-Language)
             </button>
-            <button type="button" id="btn-label-neg" class="hud-btn text-xs py-2 border border-slate-700 bg-slate-900 text-slate-400 font-bold">
-              - NEG (Out-of-Language)
+            <button type="button" id="btn-label-neg" class="btn-workstation py-2 text-xs font-medium text-slate-400">
+              - Negative (Out-of-Language)
             </button>
           </div>
         </div>
-        <button id="btn-submit-clue" class="hud-btn hud-btn-primary w-full py-2 text-xs mt-2">
-          Add Clue to Evidence Board
+        <button id="btn-submit-clue" class="btn-workstation primary w-full py-2 text-xs mt-2 justify-center">
+          Add String & Re-infer
         </button>
       </div>
     </div>
   </div>
 
-  <!-- Footer -->
-  <footer class="border-t border-cyan-950/60 bg-slate-950/80 py-3.5 text-center text-[11px] font-mono text-slate-500">
-    AUTOMATA-X &bull; Problem 8: Grammatical Inference Engine (RPNI, EDSM, L*) &bull; Cyber-Detective Forensic HUD
-  </footer>
-
+  <!-- Application Logic -->
   <script src="/app.js"></script>
 </body>
 </html>
