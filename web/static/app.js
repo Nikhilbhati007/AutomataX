@@ -18,6 +18,14 @@ let cyLearned = null;
 let cySim = null;
 let cyReplay = null;
 let cyReference = null;
+let cyArchitect = null;
+
+// Automata Architect state
+let currentArchitectData = null;
+let activeArchitectMode = "eps_nfa";
+let architectPresets = [];
+let currentArchitectSimResult = null;
+let currentArchitectStepIndex = 0;
 
 // Chart.js instances
 let chartLearningCurve = null;
@@ -207,6 +215,33 @@ const CY_STYLE = [
       'shadow-blur': 15,
       'shadow-color': '#00f0ff',
     }
+  },
+  {
+    selector: 'node.active-set',
+    style: {
+      'background-color': '#f59e0b',
+      'border-color': '#ffffff',
+      'border-width': 4.5,
+      'color': '#050811',
+      'width': 52,
+      'height': 52,
+      'shadow-blur': 30,
+      'shadow-color': 'rgba(245, 158, 11, 0.9)',
+      'shadow-opacity': 1,
+    }
+  },
+  {
+    selector: 'edge.epsilon-edge',
+    style: {
+      'line-style': 'dashed',
+      'line-dash-pattern': [6, 4],
+      'line-color': '#f59e0b',
+      'target-arrow-color': '#f59e0b',
+      'color': '#fbbf24',
+      'font-style': 'italic',
+      'font-weight': 'bold',
+      'width': 2.5,
+    }
   }
 ];
 
@@ -313,12 +348,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   cySim = initCy('cy-sim-container');
   cyReplay = initCy('cy-replay-container');
   cyReference = initCy('cy-reference-container');
+  cyArchitect = initCy('cy-architect-container');
 
   setupTabs();
   setupEventListeners();
   await loadCatalogAndPresets();
   await generateData();
   await runInference();
+  await initArchitectSector();
 });
 
 // ---------------------------------------------------------------------------
@@ -349,6 +386,7 @@ function setupTabs() {
           if (targetId === 'tab-simulator' && cySim) cySim.resize().fit(35);
           if (targetId === 'tab-replay' && cyReplay) cyReplay.resize().fit(35);
           if (targetId === 'tab-compare' && cyReference) cyReference.resize().fit(35);
+          if (targetId === 'tab-architect' && cyArchitect) cyArchitect.resize().fit(35);
         }, 80);
       }
     });
@@ -1365,5 +1403,331 @@ async function runActiveStudyExperiment() {
   } finally {
     btn.textContent = 'Run Active Oracle';
     btn.disabled = false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Automata Architect Sector (ε-NFA ↔ NFA ↔ DFA ↔ Minimized DFA)
+// ---------------------------------------------------------------------------
+
+async function initArchitectSector() {
+  try {
+    const res = await fetch('/api/architect/presets');
+    if (res.ok) {
+      architectPresets = await res.json();
+      renderArchitectPresets();
+    }
+
+    const btnRegex = document.getElementById('btn-arch-mode-regex');
+    const btnCustom = document.getElementById('btn-arch-mode-custom');
+    const boxRegex = document.getElementById('arch-box-regex');
+    const boxCustom = document.getElementById('arch-box-custom');
+
+    if (btnRegex && btnCustom && boxRegex && boxCustom) {
+      btnRegex.addEventListener('click', () => {
+        sfxClick();
+        btnRegex.className = 'px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-600 font-bold';
+        btnCustom.className = 'px-2 py-0.5 rounded text-slate-400 hover:text-slate-200';
+        boxRegex.classList.remove('hidden');
+        boxCustom.classList.add('hidden');
+      });
+
+      btnCustom.addEventListener('click', () => {
+        sfxClick();
+        btnCustom.className = 'px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-600 font-bold';
+        btnRegex.className = 'px-2 py-0.5 rounded text-slate-400 hover:text-slate-200';
+        boxCustom.classList.remove('hidden');
+        boxRegex.classList.add('hidden');
+      });
+    }
+
+    const btnCompile = document.getElementById('btn-arch-compile');
+    if (btnCompile) {
+      btnCompile.addEventListener('click', () => compileArchitect());
+    }
+
+    const tabBtns = document.querySelectorAll('.arch-tab-btn');
+    tabBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const mode = btn.getAttribute('data-mode');
+        switchArchitectRepresentation(mode);
+      });
+    });
+
+    const layoutSel = document.getElementById('arch-layout-select');
+    if (layoutSel) {
+      layoutSel.addEventListener('change', () => {
+        if (cyArchitect) {
+          applyLayout(cyArchitect, layoutSel.value);
+        }
+      });
+    }
+
+    const btnFit = document.getElementById('btn-arch-fit');
+    if (btnFit) {
+      btnFit.addEventListener('click', () => {
+        sfxClick();
+        if (cyArchitect) cyArchitect.fit(35);
+      });
+    }
+
+    const btnSimRun = document.getElementById('btn-arch-sim-run');
+    if (btnSimRun) {
+      btnSimRun.addEventListener('click', () => simulateArchitectString(false));
+    }
+
+    const btnSimStep = document.getElementById('btn-arch-sim-step');
+    if (btnSimStep) {
+      btnSimStep.addEventListener('click', () => simulateArchitectString(true));
+    }
+
+    const strInput = document.getElementById('arch-sim-string');
+    if (strInput) {
+      strInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          simulateArchitectString(false);
+        }
+      });
+    }
+
+    await compileArchitect();
+  } catch (err) {
+    console.error("Failed to initialize architect sector:", err);
+  }
+}
+
+function renderArchitectPresets() {
+  const container = document.getElementById('arch-preset-chips');
+  if (!container) return;
+  container.innerHTML = '';
+
+  architectPresets.forEach((p, idx) => {
+    const chip = document.createElement('button');
+    chip.className = `px-2 py-1 rounded text-[11px] font-mono border transition ${
+      idx === 0 ? 'bg-amber-950/80 text-amber-300 border-amber-600' : 'bg-slate-900 text-slate-300 border-slate-700 hover:border-amber-500/50'
+    }`;
+    chip.textContent = p.name;
+    chip.title = `${p.pattern} (${p.description})`;
+    chip.addEventListener('click', () => {
+      sfxClick();
+      document.querySelectorAll('#arch-preset-chips button').forEach(b => {
+        b.className = 'px-2 py-1 rounded text-[11px] font-mono border transition bg-slate-900 text-slate-300 border-slate-700 hover:border-amber-500/50';
+      });
+      chip.className = 'px-2 py-1 rounded text-[11px] font-mono border transition bg-amber-950/80 text-amber-300 border-amber-600';
+
+      const patInput = document.getElementById('arch-input-pattern');
+      if (patInput) patInput.value = p.pattern;
+
+      renderQuickTestStrings(p.sample_tests || []);
+      compileArchitect();
+    });
+    container.appendChild(chip);
+  });
+
+  if (architectPresets.length > 0) {
+    renderQuickTestStrings(architectPresets[0].sample_tests || []);
+  }
+}
+
+function renderQuickTestStrings(samples) {
+  const container = document.getElementById('arch-quick-strings');
+  if (!container) return;
+  container.innerHTML = '';
+
+  samples.forEach(s => {
+    const chip = document.createElement('button');
+    chip.className = 'px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-300 hover:border-cyan-400 hover:text-cyan-300 transition text-[11px] font-mono';
+    chip.textContent = s === "" ? 'ε (empty)' : s;
+    chip.addEventListener('click', () => {
+      sfxClick();
+      const strInput = document.getElementById('arch-sim-string');
+      if (strInput) {
+        strInput.value = s;
+        simulateArchitectString(false);
+      }
+    });
+    container.appendChild(chip);
+  });
+}
+
+async function compileArchitect() {
+  const spin = document.getElementById('spin-arch');
+  if (spin) spin.classList.remove('hidden');
+
+  try {
+    const isCustom = !document.getElementById('arch-box-custom').classList.contains('hidden');
+    let payload = {};
+    if (isCustom) {
+      payload = { custom_text: document.getElementById('arch-input-custom-text').value };
+    } else {
+      payload = { pattern: document.getElementById('arch-input-pattern').value };
+    }
+
+    const res = await fetch('/api/architect/compile', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Failed to compile automata');
+    }
+
+    currentArchitectData = await res.json();
+    sfxDeploy();
+
+    const tel = currentArchitectData.telemetry || {};
+    const elEps = document.getElementById('arch-pipe-eps');
+    const elNfa = document.getElementById('arch-pipe-nfa');
+    const elDfa = document.getElementById('arch-pipe-dfa');
+    const elMin = document.getElementById('arch-pipe-min');
+
+    if (elEps) elEps.textContent = `${tel.eps_nfa_states ?? '--'} states (${tel.eps_nfa_epsilon_count ?? 0} ε-edges)`;
+    if (elNfa) elNfa.textContent = `${tel.nfa_states ?? '--'} states`;
+    if (elDfa) elDfa.textContent = `${tel.dfa_states ?? '--'} states`;
+    if (elMin) elMin.textContent = `${tel.min_dfa_states ?? '--'} states`;
+
+    switchArchitectRepresentation(activeArchitectMode);
+  } catch (err) {
+    console.error("Compile error:", err);
+    sfxReject();
+    alert(`Architect Error: ${err.message}`);
+  } finally {
+    if (spin) spin.classList.add('hidden');
+  }
+}
+
+function switchArchitectRepresentation(mode) {
+  if (!currentArchitectData || !currentArchitectData[mode]) return;
+  activeArchitectMode = mode;
+  sfxClick();
+
+  const tabBtns = document.querySelectorAll('.arch-tab-btn');
+  tabBtns.forEach(btn => {
+    if (btn.getAttribute('data-mode') === mode) {
+      btn.className = 'arch-tab-btn active px-3 py-1.5 text-xs font-mono font-bold rounded-lg bg-amber-950/80 text-amber-300 border border-amber-600/60 transition';
+    } else {
+      btn.className = 'arch-tab-btn px-3 py-1.5 text-xs font-mono font-semibold rounded-lg text-slate-400 hover:text-slate-200 transition';
+    }
+  });
+
+  const machine = currentArchitectData[mode];
+  const dict = machine.dict || {};
+
+  const badgeEl = document.getElementById('arch-active-badge');
+  const titleEl = document.getElementById('arch-canvas-title');
+  const statesEl = document.getElementById('arch-stat-states');
+  const transEl = document.getElementById('arch-stat-transitions');
+  const alphaEl = document.getElementById('arch-stat-alphabet');
+  const detEl = document.getElementById('arch-stat-determinism');
+
+  if (badgeEl) badgeEl.textContent = mode.replace('_', '-').toUpperCase();
+  if (titleEl) titleEl.textContent = `Representation: ${machine.name}`;
+  if (statesEl) statesEl.textContent = machine.states_count;
+  if (transEl) transEl.textContent = machine.transitions_count;
+  if (alphaEl) alphaEl.textContent = (dict.alphabet || []).join(', ') || 'Σ';
+
+  if (detEl) {
+    if (machine.is_deterministic) {
+      detEl.textContent = 'Deterministic';
+      detEl.className = 'text-xs text-emerald-400 font-bold';
+    } else {
+      detEl.textContent = machine.has_epsilon ? 'Non-deterministic (ε-NFA)' : 'Non-deterministic (NFA)';
+      detEl.className = 'text-xs text-amber-400 font-bold';
+    }
+  }
+
+  if (cyArchitect && machine.cytoscape) {
+    cyArchitect.elements().remove();
+    cyArchitect.add(machine.cytoscape);
+    const layoutName = document.getElementById('arch-layout-select').value || 'cose';
+    applyLayout(cyArchitect, layoutName);
+  }
+
+  const verdictEl = document.getElementById('arch-sim-verdict');
+  if (verdictEl) {
+    verdictEl.textContent = `READY (${mode.replace('_', '-').toUpperCase()})`;
+    verdictEl.className = 'px-3 py-1 rounded-full text-xs font-mono font-bold bg-slate-900 text-slate-400 border border-slate-800';
+  }
+}
+
+async function simulateArchitectString(isStep = false) {
+  if (!currentArchitectData) return;
+  const strInput = document.getElementById('arch-sim-string');
+  const testStr = strInput ? strInput.value : '';
+
+  try {
+    const isCustom = !document.getElementById('arch-box-custom').classList.contains('hidden');
+    let payload = {
+      machine_type: activeArchitectMode,
+      string: testStr,
+    };
+    if (isCustom) {
+      payload.custom_text = document.getElementById('arch-input-custom-text').value;
+    } else {
+      payload.pattern = document.getElementById('arch-input-pattern').value;
+    }
+
+    const res = await fetch('/api/architect/simulate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Simulation failed');
+    }
+
+    currentArchitectSimResult = await res.json();
+    const verdictEl = document.getElementById('arch-sim-verdict');
+    const stepsBox = document.getElementById('arch-sim-steps-box');
+
+    if (currentArchitectSimResult.accepted) {
+      sfxAccept();
+      if (verdictEl) {
+        verdictEl.textContent = 'VERDICT: ACCEPTED ✔';
+        verdictEl.className = 'px-3 py-1 rounded-full text-xs font-mono font-bold bg-emerald-950 text-emerald-300 border border-emerald-500 shadow-md shadow-emerald-500/20';
+      }
+    } else {
+      sfxReject();
+      if (verdictEl) {
+        verdictEl.textContent = 'VERDICT: REJECTED ✘';
+        verdictEl.className = 'px-3 py-1 rounded-full text-xs font-mono font-bold bg-rose-950 text-rose-300 border border-rose-500 shadow-md shadow-rose-500/20';
+      }
+    }
+
+    const steps = currentArchitectSimResult.steps || [];
+    if (stepsBox) {
+      stepsBox.innerHTML = '';
+      steps.forEach(st => {
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between py-1 border-b border-slate-900';
+        const symStr = st.symbol === null ? 'INIT (ε-closure)' : `Symbol '${st.symbol}'`;
+        const actStr = (st.active_states || []).join(', ');
+        row.innerHTML = `
+          <span class="text-slate-400">Step ${st.step}: <span class="text-cyan-300 font-bold">${symStr}</span></span>
+          <span class="text-amber-300 font-bold">{ ${actStr} }</span>
+        `;
+        stepsBox.appendChild(row);
+      });
+    }
+
+    if (cyArchitect && steps.length > 0) {
+      cyArchitect.nodes().removeClass('active-set highlighted');
+      const finalStep = steps[steps.length - 1];
+      const activeIds = finalStep.active_states || [];
+      activeIds.forEach(id => {
+        const node = cyArchitect.getElementById(id);
+        if (node) {
+          node.addClass(currentArchitectSimResult.is_nfa ? 'active-set' : 'highlighted');
+        }
+      });
+    }
+  } catch (err) {
+    console.error("Simulation error:", err);
+    sfxReject();
+    alert(`Simulation Error: ${err.message}`);
   }
 }

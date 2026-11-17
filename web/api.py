@@ -14,10 +14,15 @@ from pydantic import BaseModel, Field
 from core import (
     DEFAULT_ALPHABETS,
     DFA,
+    NFA,
     REFERENCE_LANGUAGES,
+    architect_automata,
     are_equivalent,
     get_reference_dfa,
     get_reference_language,
+    nfa_remove_epsilon,
+    parse_custom_transitions,
+    simulate_automaton,
 )
 from data import (
     generate_characteristic_sample,
@@ -101,6 +106,63 @@ def dfa_to_cytoscape(dfa_dict: dict[str, Any]) -> list[dict[str, Any]]:
                     "label": label,
                     "is_self": src == dst,
                 }
+            }
+        )
+
+    return elements
+
+
+def nfa_to_cytoscape(nfa_dict: dict[str, Any]) -> list[dict[str, Any]]:
+    """Convert a serialized NFA dictionary to Cytoscape.js node/edge elements."""
+    elements: list[dict[str, Any]] = []
+    states: list[str] = nfa_dict.get("states", [])
+    start_state: str = nfa_dict.get("start", "")
+    accept_states: set[str] = set(nfa_dict.get("accept_states", []))
+    transitions: dict[str, dict[str, list[str]]] = nfa_dict.get("transitions", {})
+
+    for s in states:
+        elements.append(
+            {
+                "data": {
+                    "id": s,
+                    "label": s,
+                    "is_start": s == start_state,
+                    "is_accept": s in accept_states,
+                },
+                "classes": " ".join(
+                    filter(
+                        None,
+                        [
+                            "start" if s == start_state else "",
+                            "accept" if s in accept_states else "",
+                        ],
+                    )
+                ),
+            }
+        )
+
+    edge_map: dict[tuple[str, str], list[str]] = {}
+    for src, edges in transitions.items():
+        for sym, targets in edges.items():
+            sym_label = "ε" if sym == "" else sym
+            for dst in targets:
+                edge_map.setdefault((src, dst), []).append(sym_label)
+
+    for idx, ((src, dst), syms) in enumerate(edge_map.items()):
+        label = ", ".join(sorted(set(syms)))
+        edge_id = f"e_{src}_{dst}_{idx}"
+        has_eps = "ε" in syms
+        elements.append(
+            {
+                "data": {
+                    "id": edge_id,
+                    "source": src,
+                    "target": dst,
+                    "label": label,
+                    "is_self": src == dst,
+                    "is_epsilon": has_eps,
+                },
+                "classes": "epsilon-edge" if has_eps else "",
             }
         )
 
@@ -498,6 +560,164 @@ def api_clustering(req: ClusterRequest) -> dict[str, Any]:
         dfa = DFA.from_dict(req.dfa)
         clusters = cluster_strings_by_end_state(dfa, req.strings)
         return {"clusters": clusters}
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+# ---------------------------------------------------------------------------
+# Automata Architect & Interchange Pipeline
+# ---------------------------------------------------------------------------
+
+class ArchitectCompileRequest(BaseModel):
+    pattern: str | None = None
+    custom_text: str | None = None
+    alphabet: list[str] | None = None
+
+
+class ArchitectSimulateRequest(BaseModel):
+    machine_type: Literal["eps_nfa", "nfa", "dfa", "min_dfa"] = "eps_nfa"
+    pattern: str | None = None
+    custom_text: str | None = None
+    alphabet: list[str] | None = None
+    string: str = ""
+
+
+ARCHITECT_PRESETS = [
+    {
+        "id": "ends_with_ab",
+        "name": "Ends with 'ab'",
+        "pattern": "(a|b)*ab",
+        "alphabet": ["a", "b"],
+        "description": "Strings over {a, b} ending with 'ab'. Highlights suffix buffer tracking.",
+        "sample_tests": ["ab", "aab", "bab", "aba", "abb", ""],
+    },
+    {
+        "id": "contains_00",
+        "name": "Contains '00'",
+        "pattern": "(0|1)*00(0|1)*",
+        "alphabet": ["0", "1"],
+        "description": "Binary strings containing substring '00'.",
+        "sample_tests": ["00", "100", "0100", "101", "0", "11"],
+    },
+    {
+        "id": "a_star_b_plus",
+        "name": "a*b+ (At least one b)",
+        "pattern": "a*b+",
+        "alphabet": ["a", "b"],
+        "description": "Zero or more 'a's followed by one or more 'b's.",
+        "sample_tests": ["b", "ab", "aab", "abb", "a", "ba"],
+    },
+    {
+        "id": "even_ones",
+        "name": "Even number of 1s",
+        "pattern": "0*(10*10*)*",
+        "alphabet": ["0", "1"],
+        "description": "Parity language accepting binary strings with even count of 1s.",
+        "sample_tests": ["", "0", "00", "11", "0101", "1"],
+    },
+    {
+        "id": "third_from_end_a",
+        "name": "3rd from end is 'a'",
+        "pattern": "(a|b)*a(a|b)(a|b)",
+        "alphabet": ["a", "b"],
+        "description": "Exponential subset blowup benchmark (4 NFA states -> 8 DFA states).",
+        "sample_tests": ["aab", "aba", "baa", "ba", "a", "bbbaab"],
+    },
+    {
+        "id": "alternating_01",
+        "name": "Alternating (01)+",
+        "pattern": "(01)+",
+        "alphabet": ["0", "1"],
+        "description": "Repeated non-empty 01 pairs.",
+        "sample_tests": ["01", "0101", "010101", "0", "1", "010"],
+    },
+]
+
+
+@app.get("/api/architect/presets")
+def api_architect_presets() -> list[dict[str, Any]]:
+    """Return catalog of pre-configured patterns for the Automata Architect."""
+    return ARCHITECT_PRESETS
+
+
+@app.post("/api/architect/compile")
+def api_architect_compile(req: ArchitectCompileRequest) -> dict[str, Any]:
+    """Compile pattern or custom transitions into 4 inter-changeable automata representations."""
+    try:
+        alpha = tuple(req.alphabet) if req.alphabet else None
+        res = architect_automata(pattern=req.pattern, custom_text=req.custom_text, alphabet=alpha)
+
+        eps_nfa: NFA = res["eps_nfa"]  # type: ignore[assignment]
+        nfa_obj: NFA = res["nfa"]      # type: ignore[assignment]
+        dfa_obj: DFA = res["dfa"]      # type: ignore[assignment]
+        min_dfa_obj: DFA = res["min_dfa"]  # type: ignore[assignment]
+
+        eps_dict = eps_nfa.to_dict()
+        nfa_dict = nfa_obj.to_dict()
+        dfa_dict = dfa_obj.to_dict()
+        min_dfa_dict = min_dfa_obj.to_dict()
+
+        return {
+            "eps_nfa": {
+                "name": "ε-NFA (Thompson's Construction)",
+                "type": "eps_nfa",
+                "is_deterministic": False,
+                "has_epsilon": True,
+                "states_count": len(eps_nfa.states),
+                "transitions_count": sum(
+                    len(tg) for src in eps_nfa.transitions.values() for tg in src.values()
+                ),
+                "dict": eps_dict,
+                "cytoscape": nfa_to_cytoscape(eps_dict),
+            },
+            "nfa": {
+                "name": "NFA (ε-Free Transition Graph)",
+                "type": "nfa",
+                "is_deterministic": False,
+                "has_epsilon": False,
+                "states_count": len(nfa_obj.states),
+                "transitions_count": sum(
+                    len(tg) for src in nfa_obj.transitions.values() for tg in src.values()
+                ),
+                "dict": nfa_dict,
+                "cytoscape": nfa_to_cytoscape(nfa_dict),
+            },
+            "dfa": {
+                "name": "DFA (Powerset / Subset Construction)",
+                "type": "dfa",
+                "is_deterministic": True,
+                "has_epsilon": False,
+                "states_count": len(dfa_obj.states),
+                "transitions_count": sum(len(src) for src in dfa_obj.transitions.values()),
+                "dict": dfa_dict,
+                "cytoscape": dfa_to_cytoscape(dfa_dict),
+            },
+            "min_dfa": {
+                "name": "Minimized DFA (Hopcroft's Partitioning)",
+                "type": "min_dfa",
+                "is_deterministic": True,
+                "has_epsilon": False,
+                "states_count": len(min_dfa_obj.states),
+                "transitions_count": sum(len(src) for src in min_dfa_obj.transitions.values()),
+                "dict": min_dfa_dict,
+                "cytoscape": dfa_to_cytoscape(min_dfa_dict),
+            },
+            "telemetry": res["telemetry"],
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/architect/simulate")
+def api_architect_simulate(req: ArchitectSimulateRequest) -> dict[str, Any]:
+    """Simulate test string on the selected representation."""
+    try:
+        alpha = tuple(req.alphabet) if req.alphabet else None
+        res = architect_automata(pattern=req.pattern, custom_text=req.custom_text, alphabet=alpha)
+
+        target_machine = res[req.machine_type]
+        sim_res = simulate_automaton(target_machine, req.string)  # type: ignore[arg-type]
+        return sim_res
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

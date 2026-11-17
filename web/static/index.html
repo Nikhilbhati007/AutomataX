@@ -113,6 +113,10 @@
         <span class="text-slate-500">// 05</span>
         <span>BENCHMARK STRESS LAB</span>
       </button>
+      <button class="nav-tab px-3.5 py-1.5 text-xs font-mono font-bold rounded-lg text-amber-400 hover:text-amber-300 hover:bg-slate-900/60 transition flex items-center space-x-2 border border-transparent hover:border-amber-500/40" data-target="tab-architect" id="nav-btn-architect">
+        <span class="text-amber-400">// 06</span>
+        <span>AUTOMATA ARCHITECT (ε-NFA ↔ NFA ↔ DFA)</span>
+      </button>
     </div>
   </nav>
 
@@ -554,6 +558,225 @@
             <canvas id="chart-active-study"></canvas>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- TAB 6: AUTOMATA ARCHITECT (ε-NFA ↔ NFA ↔ DFA INTERCHANGE)           -->
+    <!-- =================================================================== -->
+    <div id="tab-architect" class="tab-panel hidden space-y-6">
+      
+      <!-- Top Banner / Lead -->
+      <div class="hud-panel p-5 flex flex-wrap items-center justify-between gap-4 border-amber-500/40 bg-slate-950/90">
+        <div>
+          <div class="flex items-center space-x-2.5">
+            <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-950/80 text-amber-400 border border-amber-700/60 uppercase">TOC STUDIO</span>
+            <h2 class="text-base font-bold text-slate-100 font-display">Automata Architect & Interchange Lab</h2>
+          </div>
+          <p class="text-xs text-slate-400 mt-0.5">
+            Design or enter string patterns / regular expressions and instantly synthesize, visualize, and interchange between 
+            <span class="text-amber-400 font-mono">ε-NFA (Thompson)</span> ➔ 
+            <span class="text-sky-400 font-mono">NFA (ε-Free)</span> ➔ 
+            <span class="text-cyan-400 font-mono">DFA (Powerset)</span> ➔ 
+            <span class="text-emerald-400 font-mono">Minimized DFA (Hopcroft)</span>.
+          </p>
+        </div>
+
+        <!-- 4-Way Interchange Mode Switcher Buttons -->
+        <div class="flex items-center bg-slate-900/90 p-1 rounded-xl border border-slate-800 space-x-1" id="architect-interchange-bar">
+          <button class="arch-tab-btn active px-3 py-1.5 text-xs font-mono font-bold rounded-lg bg-amber-950/80 text-amber-300 border border-amber-600/60 transition" data-mode="eps_nfa">
+            1. ε-NFA (Thompson)
+          </button>
+          <button class="arch-tab-btn px-3 py-1.5 text-xs font-mono font-semibold rounded-lg text-slate-400 hover:text-sky-300 transition" data-mode="nfa">
+            2. NFA (ε-Free)
+          </button>
+          <button class="arch-tab-btn px-3 py-1.5 text-xs font-mono font-semibold rounded-lg text-slate-400 hover:text-cyan-300 transition" data-mode="dfa">
+            3. DFA (Powerset)
+          </button>
+          <button class="arch-tab-btn px-3 py-1.5 text-xs font-mono font-semibold rounded-lg text-slate-400 hover:text-emerald-300 transition" data-mode="min_dfa">
+            4. Minimized DFA
+          </button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Left Column: Input Knobs & Presets & Telemetry (4 cols) -->
+        <div class="lg:col-span-4 space-y-5">
+
+          <!-- Design Input Card -->
+          <div class="hud-panel hud-bracket p-5 space-y-4">
+            <div class="flex items-center justify-between">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-amber-300 font-display flex items-center space-x-2">
+                <span class="h-2 w-2 rounded-full bg-amber-400 beacon-pulse"></span>
+                <span>Design Specification</span>
+              </h3>
+              <div class="flex space-x-1 text-[10px] font-mono">
+                <button id="btn-arch-mode-regex" class="px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-600 font-bold">Regex</button>
+                <button id="btn-arch-mode-custom" class="px-2 py-0.5 rounded text-slate-400 hover:text-slate-200">Custom</button>
+              </div>
+            </div>
+
+            <!-- Regex Pattern Input -->
+            <div id="arch-box-regex" class="space-y-3">
+              <div>
+                <label class="block text-[10px] font-mono text-slate-400 mb-1">REGULAR EXPRESSION / STRING PATTERN</label>
+                <input type="text" id="arch-input-pattern" value="(a|b)*ab" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono text-amber-300 focus:border-amber-400 focus:outline-none">
+              </div>
+
+              <!-- Quick Presets -->
+              <div>
+                <label class="block text-[10px] font-mono text-slate-400 mb-1.5">CLASSIC TOC PATTERN PRESETS</label>
+                <div class="flex flex-wrap gap-1.5" id="arch-preset-chips">
+                  <!-- Injected dynamically -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Custom Transition Grammar Input (Hidden by default) -->
+            <div id="arch-box-custom" class="space-y-2 hidden">
+              <label class="block text-[10px] font-mono text-slate-400">TRANSITIONS (src, sym -> dst1, dst2)</label>
+              <textarea id="arch-input-custom-text" rows="5" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-xs font-mono text-cyan-300 focus:border-cyan-400 focus:outline-none" placeholder="# start: q0&#10;# accept: q2&#10;q0, a -> q1&#10;q0, b -> q0&#10;q1, b -> q2&#10;q1, ε -> q0"></textarea>
+            </div>
+
+            <!-- Action Button -->
+            <button id="btn-arch-compile" class="hud-btn hud-btn-amber w-full py-2.5 text-xs flex items-center justify-center space-x-2 font-bold shadow-lg shadow-amber-500/20">
+              <svg class="w-4 h-4 animate-spin hidden" id="spin-arch" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+              <span>Compile & Architect 4 Automata</span>
+            </button>
+          </div>
+
+          <!-- Active Representation Telemetry -->
+          <div class="hud-panel p-5 space-y-3">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-200 font-display flex items-center justify-between">
+              <span>Active Machine Telemetry</span>
+              <span id="arch-active-badge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-700 font-bold uppercase">ε-NFA</span>
+            </h3>
+
+            <div class="grid grid-cols-2 gap-2 text-xs font-mono">
+              <div class="p-2.5 bg-slate-950/80 rounded-lg border border-slate-800">
+                <span class="text-slate-500 block text-[10px] uppercase">States</span>
+                <span id="arch-stat-states" class="text-base text-cyan-400 font-bold">--</span>
+              </div>
+              <div class="p-2.5 bg-slate-950/80 rounded-lg border border-slate-800">
+                <span class="text-slate-500 block text-[10px] uppercase">Transitions</span>
+                <span id="arch-stat-transitions" class="text-base text-amber-400 font-bold">--</span>
+              </div>
+              <div class="p-2.5 bg-slate-950/80 rounded-lg border border-slate-800">
+                <span class="text-slate-500 block text-[10px] uppercase">Alphabet</span>
+                <span id="arch-stat-alphabet" class="text-xs text-slate-200 font-bold">--</span>
+              </div>
+              <div class="p-2.5 bg-slate-950/80 rounded-lg border border-slate-800">
+                <span class="text-slate-500 block text-[10px] uppercase">Determinism</span>
+                <span id="arch-stat-determinism" class="text-xs text-rose-400 font-bold">Non-deterministic</span>
+              </div>
+            </div>
+
+            <!-- Conversion Pipeline Summary -->
+            <div class="p-3 bg-slate-950 rounded-lg border border-slate-800 text-[11px] font-mono space-y-1">
+              <span class="text-slate-400 font-bold block text-[10px] uppercase">// Pipeline Progression</span>
+              <div class="flex items-center justify-between text-slate-300">
+                <span>1. Thompson ε-NFA:</span>
+                <span id="arch-pipe-eps" class="text-amber-400 font-bold">-- states</span>
+              </div>
+              <div class="flex items-center justify-between text-slate-300">
+                <span>2. ε-Free NFA:</span>
+                <span id="arch-pipe-nfa" class="text-sky-400 font-bold">-- states</span>
+              </div>
+              <div class="flex items-center justify-between text-slate-300">
+                <span>3. Powerset DFA:</span>
+                <span id="arch-pipe-dfa" class="text-cyan-400 font-bold">-- states</span>
+              </div>
+              <div class="flex items-center justify-between text-slate-300">
+                <span>4. Hopcroft Minimal:</span>
+                <span id="arch-pipe-min" class="text-emerald-400 font-bold">-- states</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Center & Right: Interactive Canvas + Live Simulator (8 cols) -->
+        <div class="lg:col-span-8 space-y-5">
+
+          <!-- Cytoscape Canvas Card -->
+          <div class="hud-panel hud-bracket p-4 space-y-3">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <div class="flex items-center space-x-2">
+                <span class="text-xs font-mono font-bold text-slate-200" id="arch-canvas-title">Representation: ε-NFA (Thompson's Construction)</span>
+                <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-slate-400">Cytoscape Dynamic Canvas</span>
+              </div>
+
+              <!-- Canvas Layout Controls -->
+              <div class="flex items-center space-x-2">
+                <select id="arch-layout-select" class="bg-slate-900 text-slate-300 border border-slate-700 rounded px-2 py-1 text-xs font-mono">
+                  <option value="cose" selected>Physics (COSE)</option>
+                  <option value="circle">Circle</option>
+                  <option value="concentric">Concentric</option>
+                  <option value="breadthfirst">Breadthfirst Tree</option>
+                </select>
+                <button id="btn-arch-fit" class="hud-btn hud-btn-secondary px-2.5 py-1 text-xs">Fit Canvas</button>
+              </div>
+            </div>
+
+            <!-- Canvas Container -->
+            <div class="relative canvas-crosshair">
+              <div id="cy-architect-container" style="height: 440px;" class="w-full rounded-xl bg-slate-950/90 border border-slate-800"></div>
+            </div>
+
+            <!-- Legend -->
+            <div class="flex items-center justify-between text-[11px] font-mono text-slate-400 pt-1 border-t border-slate-900">
+              <div class="flex items-center space-x-4">
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span> Start Node</span>
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full border-2 border-emerald-400"></span> Double-Ring Accept</span>
+                <span class="flex items-center gap-1.5"><span class="w-4 h-0.5 border-t-2 border-dashed border-amber-400"></span> Epsilon Edge (ε)</span>
+                <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span> Active Set Node</span>
+              </div>
+              <span class="text-slate-500">Drag nodes or scroll to zoom</span>
+            </div>
+          </div>
+
+          <!-- Live String Simulator Card for Current Machine -->
+          <div class="hud-panel p-5 space-y-4">
+            <div class="flex items-center justify-between">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-cyan-300 font-display flex items-center space-x-2">
+                <span class="h-2 w-2 rounded-full bg-cyan-400"></span>
+                <span>Live String Traversal on Active Machine</span>
+              </h3>
+              <div id="arch-sim-verdict" class="px-3 py-1 rounded-full text-xs font-mono font-bold bg-slate-900 text-slate-400 border border-slate-800">
+                READY FOR INPUT
+              </div>
+            </div>
+
+            <!-- String Input & Quick Test Buttons -->
+            <div class="flex items-center space-x-3">
+              <div class="flex-1">
+                <input type="text" id="arch-sim-string" value="ab" placeholder="Enter string (leave empty for ε)..." class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono text-cyan-300 focus:border-cyan-400 focus:outline-none">
+              </div>
+              <button id="btn-arch-sim-run" class="hud-btn hud-btn-primary px-4 py-2 text-xs flex items-center space-x-1.5 font-bold">
+                <span>Simulate</span>
+              </button>
+              <button id="btn-arch-sim-step" class="hud-btn hud-btn-secondary px-3 py-2 text-xs font-mono">
+                Step ▶
+              </button>
+            </div>
+
+            <!-- Quick String Chips -->
+            <div class="flex items-center space-x-2 text-[11px] font-mono">
+              <span class="text-slate-500">Quick Test:</span>
+              <div class="flex flex-wrap gap-1.5" id="arch-quick-strings">
+                <!-- Injected dynamically -->
+              </div>
+            </div>
+
+            <!-- Traversal Execution Steps History -->
+            <div id="arch-sim-steps-box" class="max-h-36 overflow-y-auto p-3 bg-slate-950 rounded-lg border border-slate-800 text-xs font-mono space-y-1 text-slate-300">
+              <p class="text-slate-500 italic">Enter a string above and click Simulate to inspect active states at each transition step.</p>
+            </div>
+          </div>
+
+        </div>
+
       </div>
     </div>
 
