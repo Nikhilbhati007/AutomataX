@@ -150,7 +150,6 @@ function initCy(containerId) {
     wheelSensitivity: 0.25,
   });
 
-  // State inspection click listener
   cy.on('tap', 'node', function(evt) {
     const node = evt.target;
     cy.elements().removeClass('selected-inspect');
@@ -166,6 +165,10 @@ function renderElements(cy, elements, layoutName = 'cose') {
   cy.elements().remove();
   cy.add(elements);
   applyGraphLayout(cy, layoutName);
+  setTimeout(() => {
+    cy.resize();
+    cy.fit(40);
+  }, 100);
 }
 
 function applyGraphLayout(cy, layoutName) {
@@ -178,8 +181,8 @@ function applyGraphLayout(cy, layoutName) {
       animate: false,
       fit: true,
       padding: 40,
-      nodeRepulsion: 7000,
-      idealEdgeLength: 65,
+      nodeRepulsion: 7500,
+      idealEdgeLength: 70,
       edgeElasticity: 100,
       gravity: 0.25,
       numIter: 1000,
@@ -221,30 +224,35 @@ function showStateInspector(node) {
   const typeBadge = document.getElementById('inspect-state-type');
   if (isStart && isAccept) {
     typeBadge.textContent = 'Start & Accept';
-    typeBadge.className = 'text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold';
+    typeBadge.style.color = 'var(--accent-emerald)';
   } else if (isAccept) {
     typeBadge.textContent = 'Accepting';
-    typeBadge.className = 'text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-medium';
+    typeBadge.style.color = 'var(--accent-emerald)';
   } else if (isStart) {
     typeBadge.textContent = 'Start';
-    typeBadge.className = 'text-[10px] px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-400 font-medium';
+    typeBadge.style.color = 'var(--accent-cyan)';
   } else {
     typeBadge.textContent = 'Normal';
-    typeBadge.className = 'text-[10px] px-1.5 py-0.5 rounded bg-white/[0.08] text-slate-300';
+    typeBadge.style.color = 'var(--text-dim)';
   }
 
   const outEdges = node.outgoers('edge');
   const list = document.getElementById('inspect-transitions-list');
   list.innerHTML = '';
   if (outEdges.length === 0) {
-    list.innerHTML = '<span class="text-slate-500 italic text-[11px]">No outgoing transitions (dead state).</span>';
+    list.innerHTML = '<span style="color: var(--text-muted); font-size: 11px; font-style: italic;">No outgoing transitions.</span>';
   } else {
     outEdges.forEach(e => {
       const row = document.createElement('div');
-      row.className = 'flex items-center justify-between text-[11px] p-1 bg-white/[0.02] rounded border border-white/[0.04]';
+      row.style.display = 'flex';
+      row.style.justifyContent = 'space-between';
+      row.style.fontSize = '11px';
+      row.style.padding = '3px 6px';
+      row.style.background = 'rgba(255,255,255,0.03)';
+      row.style.borderRadius = '4px';
       row.innerHTML = `
-        <span class="text-slate-400 font-mono">on <span class="text-sky-400 font-bold">'${e.data('label')}'</span></span>
-        <span class="text-slate-200 font-mono font-bold">➜ ${e.data('target')}</span>
+        <span style="color: var(--text-dim)">on <strong style="color: var(--accent-cyan);">'${e.data('label')}'</strong></span>
+        <span style="color: #fff; font-weight: 600;">➜ ${e.data('target')}</span>
       `;
       list.appendChild(row);
     });
@@ -261,6 +269,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   setupWorkstationLayout();
   setupEventListeners();
+
+  window.addEventListener('resize', () => {
+    if (cyLearned) cyLearned.resize().fit(40);
+    if (cyReference) cyReference.resize().fit(40);
+  });
+
   await loadCatalogAndPresets();
   await generateData();
   await runInference();
@@ -271,26 +285,20 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ---------------------------------------------------------------------------
 
 function setupWorkstationLayout() {
-  // Left & Right Collapsible Panels
   const btnLeft = document.getElementById('btn-toggle-left-panel');
   const leftPanel = document.getElementById('left-panel');
   btnLeft.addEventListener('click', () => {
-    leftPanel.classList.toggle('w-80');
-    leftPanel.classList.toggle('w-0');
-    leftPanel.classList.toggle('overflow-hidden');
+    leftPanel.classList.toggle('collapsed');
     setTimeout(() => { if (cyLearned) cyLearned.resize().fit(40); }, 220);
   });
 
   const btnRight = document.getElementById('btn-toggle-right-panel');
   const rightPanel = document.getElementById('right-panel');
   btnRight.addEventListener('click', () => {
-    rightPanel.classList.toggle('w-72');
-    rightPanel.classList.toggle('w-0');
-    rightPanel.classList.toggle('overflow-hidden');
+    rightPanel.classList.toggle('collapsed');
     setTimeout(() => { if (cyLearned) cyLearned.resize().fit(40); }, 220);
   });
 
-  // Mode Switcher Tabs
   const modeTabs = document.querySelectorAll('.mode-tab');
   const simDock = document.getElementById('sim-floating-dock');
   const replayDock = document.getElementById('replay-floating-dock');
@@ -303,7 +311,6 @@ function setupWorkstationLayout() {
       tab.classList.add('active');
       currentMode = tab.getAttribute('data-mode');
 
-      // Hide all contextual docks & overlays
       simDock.classList.add('hidden');
       replayDock.classList.add('hidden');
       diffOverlay.classList.add('hidden');
@@ -349,13 +356,15 @@ async function loadCatalogAndPresets() {
     currentPresets = presetRes.presets || [];
 
     const langSelect = document.getElementById('select-target-lang');
-    langSelect.innerHTML = '';
-    currentLanguages.forEach(l => {
-      const opt = document.createElement('option');
-      opt.value = l.id;
-      opt.textContent = `${l.name} (${l.expected_min_dfa_states} states)`;
-      langSelect.appendChild(opt);
-    });
+    if (currentLanguages.length > 0) {
+      langSelect.innerHTML = '';
+      currentLanguages.forEach(l => {
+        const opt = document.createElement('option');
+        opt.value = l.id;
+        opt.textContent = `${l.name} (${l.expected_min_dfa_states} states)`;
+        langSelect.appendChild(opt);
+      });
+    }
 
     renderDossierCards();
     updateLanguageMeta();
@@ -365,7 +374,8 @@ async function loadCatalogAndPresets() {
 }
 
 function updateLanguageMeta() {
-  const selectedId = document.getElementById('select-target-lang').value;
+  const langSelect = document.getElementById('select-target-lang');
+  const selectedId = langSelect ? langSelect.value : 'ends_with_ab';
   const lang = currentLanguages.find(l => l.id === selectedId);
   if (!lang) return;
 
@@ -381,22 +391,20 @@ function renderDossierCards() {
 
   currentPresets.forEach((p, idx) => {
     const card = document.createElement('div');
-    card.className = 'studio-card flex flex-col justify-between space-y-2.5';
+    card.className = 'studio-card';
 
     card.innerHTML = `
-      <div>
-        <div class="flex items-center justify-between">
-          <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/[0.08] text-slate-300 font-bold">${p.case_code || `CASE-${idx+1}`}</span>
-          <span class="text-[10px] font-mono text-slate-500">${p.difficulty || 'Normal'}</span>
-        </div>
-        <h4 class="text-xs font-semibold text-white mt-1.5">${p.title}</h4>
-        <p class="text-[11px] text-sky-400 font-mono mt-0.5">${p.subtitle}</p>
-        <p class="text-[11px] text-slate-400 mt-1.5 leading-snug">${p.description}</p>
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span class="pill-tag" style="background: rgba(255,255,255,0.08);">${p.case_code || `CASE-${idx+1}`}</span>
+        <span style="font-size: 10px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace;">${p.difficulty || 'Normal'}</span>
       </div>
-      <div class="pt-2 border-t border-white/[0.06] flex items-center justify-between">
-        <span class="text-[10px] font-mono text-slate-500">Algorithm: <span class="text-slate-300 font-semibold uppercase">${p.algorithm}</span></span>
-        <button class="btn-deploy-case btn-workstation primary text-xs py-1 px-2.5" data-preset-id="${p.id}">
-          Load & Run Case
+      <h4 style="font-size: 12.5px; font-weight: 600; color: #fff; margin-top: 4px;">${p.title}</h4>
+      <p style="font-size: 11px; color: var(--accent-cyan); font-family: 'JetBrains Mono', monospace;">${p.subtitle}</p>
+      <p style="font-size: 11px; color: var(--text-dim); line-height: 1.35; margin-top: 4px;">${p.description}</p>
+      <div style="padding-top: 8px; border-top: 1px solid var(--border-subtle); display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+        <span style="font-size: 10.5px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace;">Algo: <strong style="color: #fff;">${p.algorithm.toUpperCase()}</strong></span>
+        <button class="btn-deploy-case btn-studio primary" style="padding: 2px 8px; font-size: 11px;" data-preset-id="${p.id}">
+          Load Case
         </button>
       </div>
     `;
@@ -450,7 +458,6 @@ function closeDossierModal() {
 // ---------------------------------------------------------------------------
 
 function setupEventListeners() {
-  // Knobs
   const sampleCount = document.getElementById('input-sample-count');
   sampleCount.addEventListener('input', () => {
     document.getElementById('val-sample-count').textContent = sampleCount.value;
@@ -475,7 +482,6 @@ function setupEventListeners() {
     generateData();
   });
 
-  // Algorithm selectors
   document.querySelectorAll('.algo-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.algo-btn').forEach(b => b.classList.remove('active'));
@@ -493,19 +499,16 @@ function setupEventListeners() {
     });
   });
 
-  // Quick Run Button
   document.getElementById('btn-quick-run').addEventListener('click', () => {
     runInference();
   });
 
-  // Dossier Modal
   document.getElementById('btn-open-dossier').addEventListener('click', openDossierModal);
   document.getElementById('btn-close-dossier').addEventListener('click', closeDossierModal);
   document.getElementById('modal-dossier-vault').addEventListener('click', (e) => {
     if (e.target.id === 'modal-dossier-vault') closeDossierModal();
   });
 
-  // Graph Tools Dock
   document.getElementById('select-graph-layout').addEventListener('change', (e) => {
     if (cyLearned) applyGraphLayout(cyLearned, e.target.value);
   });
@@ -521,7 +524,6 @@ function setupEventListeners() {
   document.getElementById('btn-export-png').addEventListener('click', exportGraphPng);
   document.getElementById('btn-export-json').addEventListener('click', exportGraphJson);
 
-  // Evidence Search & Filter
   document.getElementById('input-search-evidence').addEventListener('input', (e) => {
     currentEvidenceSearch = e.target.value.toLowerCase();
     filterAndRenderEvidence();
@@ -536,10 +538,8 @@ function setupEventListeners() {
     });
   });
 
-  // Plant Clue Modal
   setupPlantClueModal();
 
-  // Simulator controls
   document.getElementById('btn-play-simulate').addEventListener('click', () => {
     animateStringPath();
   });
@@ -558,7 +558,6 @@ function setupEventListeners() {
     });
   });
 
-  // Replay controls
   const scrubber = document.getElementById('replay-scrubber');
   scrubber.addEventListener('input', (e) => {
     currentReplayIndex = parseInt(e.target.value, 10);
@@ -580,7 +579,6 @@ function setupEventListeners() {
   });
   document.getElementById('btn-replay-play').addEventListener('click', toggleReplayPlayback);
 
-  // Compare & Experiments
   document.getElementById('btn-recompare').addEventListener('click', runComparison);
   document.getElementById('btn-run-learning-curve').addEventListener('click', runLearningCurveExperiment);
   document.getElementById('btn-run-noise-study').addEventListener('click', runNoiseStudyExperiment);
@@ -612,14 +610,22 @@ function setupPlantClueModal() {
 
   posBtn.addEventListener('click', () => {
     newClueLabel = true;
-    posBtn.className = 'btn-workstation py-2 text-xs font-medium border-emerald-500/50 bg-emerald-500/10 text-emerald-400';
-    negBtn.className = 'btn-workstation py-2 text-xs font-medium text-slate-400';
+    posBtn.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+    posBtn.style.background = 'rgba(16, 185, 129, 0.1)';
+    posBtn.style.color = 'var(--accent-emerald)';
+    negBtn.style.borderColor = 'var(--border-subtle)';
+    negBtn.style.background = 'rgba(255,255,255,0.04)';
+    negBtn.style.color = 'var(--text-muted)';
   });
 
   negBtn.addEventListener('click', () => {
     newClueLabel = false;
-    negBtn.className = 'btn-workstation py-2 text-xs font-medium border-rose-500/50 bg-rose-500/10 text-rose-400';
-    posBtn.className = 'btn-workstation py-2 text-xs font-medium text-slate-400';
+    negBtn.style.borderColor = 'rgba(244, 63, 94, 0.4)';
+    negBtn.style.background = 'rgba(244, 63, 94, 0.1)';
+    negBtn.style.color = 'var(--accent-rose)';
+    posBtn.style.borderColor = 'var(--border-subtle)';
+    posBtn.style.background = 'rgba(255,255,255,0.04)';
+    posBtn.style.color = 'var(--text-muted)';
   });
 
   document.getElementById('btn-submit-clue').addEventListener('click', () => {
@@ -637,7 +643,8 @@ function setupPlantClueModal() {
 // ---------------------------------------------------------------------------
 
 async function generateData() {
-  const target = document.getElementById('select-target-lang').value;
+  const targetSelect = document.getElementById('select-target-lang');
+  const target = targetSelect ? targetSelect.value || 'ends_with_ab' : 'ends_with_ab';
   const size = parseInt(document.getElementById('input-sample-count').value, 10);
   const maxLength = parseInt(document.getElementById('input-max-length').value, 10);
   const noiseRate = parseFloat(document.getElementById('input-noise-rate').value) / 100.0;
@@ -686,7 +693,7 @@ function filterAndRenderEvidence() {
   document.getElementById('train-count').textContent = currentDataset.length;
 
   if (filtered.length === 0) {
-    list.innerHTML = '<div class="text-slate-500 italic text-center py-4 text-xs">No matching strings found.</div>';
+    list.innerHTML = '<div style="color: var(--text-muted); font-style: italic; text-align: center; padding: 12px; font-size: 11px;">No matching strings found.</div>';
     return;
   }
 
@@ -696,15 +703,13 @@ function filterAndRenderEvidence() {
     const strDisplay = ex.string === '' ? 'ε (empty)' : ex.string;
 
     row.innerHTML = `
-      <div class="flex items-center space-x-2">
-        <span class="font-bold ${ex.label ? 'text-slate-200' : 'text-slate-300'}">${strDisplay}</span>
-        <span class="text-[10px] text-slate-500 font-mono">|${ex.string.length}|</span>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-weight: 600; color: ${ex.label ? '#f8fafc' : '#cbd5e1'}; font-family: 'JetBrains Mono', monospace;">${strDisplay}</span>
+        <span style="font-size: 10px; color: var(--text-muted); font-family: 'JetBrains Mono', monospace;">|${ex.string.length}|</span>
       </div>
-      <div class="flex items-center space-x-1.5">
-        <span class="text-[9px] font-bold uppercase font-mono px-1 py-0.2 rounded ${
-          ex.label ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'
-        }">${ex.label ? '+pos' : '-neg'}</span>
-        <button class="btn-probe-evidence text-[10px] text-sky-400 hover:text-sky-300 font-mono px-1" title="Test in Simulator">
+      <div style="display: flex; align-items: center; gap: 6px;">
+        <span class="pill-tag ${ex.label ? 'pos' : 'neg'}">${ex.label ? '+pos' : '-neg'}</span>
+        <button class="btn-probe-evidence" style="background: none; border: none; color: var(--accent-cyan); cursor: pointer; font-size: 11px;" title="Test in Simulator">
           ➜
         </button>
       </div>
@@ -741,12 +746,11 @@ function renderTrainingExamples(examples) {
 // ---------------------------------------------------------------------------
 
 async function runInference() {
-  const langId = document.getElementById('select-target-lang').value;
+  const langSelect = document.getElementById('select-target-lang');
+  const langId = langSelect ? langSelect.value || 'ends_with_ab' : 'ends_with_ab';
   const btn = document.getElementById('btn-quick-run');
-  const spin = document.getElementById('spin-inference');
   const text = document.getElementById('btn-run-text');
 
-  spin.classList.remove('hidden');
   text.textContent = 'Inferring...';
   btn.disabled = true;
 
@@ -772,11 +776,9 @@ async function runInference() {
     currentLearnedDFA = data.dfa;
     currentSteps = data.steps || [];
 
-    // Render Canvas
     const chosenLayout = document.getElementById('select-graph-layout').value || 'cose';
     renderElements(cyLearned, data.cytoscape || [], chosenLayout);
 
-    // Update Telemetry
     const stateCount = data.dfa.states.length;
     let transitionCount = 0;
     for (const s in data.dfa.transitions) {
@@ -789,15 +791,11 @@ async function runInference() {
     document.getElementById('inspect-total-transitions').textContent = transitionCount;
     document.getElementById('inspect-merges').textContent = data.metadata.merges_accepted || 0;
 
-    // Setup Replay Scrubber
     setupReplayScrubber(currentSteps);
-
-    // Run Comparison
     await runComparison();
   } catch (err) {
     console.error("Inference run error:", err);
   } finally {
-    spin.classList.add('hidden');
     text.textContent = 'Run Inference';
     btn.disabled = false;
   }
@@ -850,10 +848,11 @@ function resetSimulation() {
   if (cyLearned) {
     cyLearned.elements().removeClass('highlighted');
   }
-  document.getElementById('sim-path-display').innerHTML = '<span class="text-slate-500 text-[11px]">Ready to simulate. Enter input string above.</span>';
+  document.getElementById('sim-path-display').innerHTML = 'Ready to simulate. Enter input string above.';
   const badge = document.getElementById('sim-verdict-badge');
   badge.textContent = 'AWAITING INPUT';
-  badge.className = 'px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-white/[0.08] text-slate-400';
+  badge.style.background = 'rgba(255,255,255,0.08)';
+  badge.style.color = 'var(--text-dim)';
 }
 
 async function stepStringPath() {
@@ -916,18 +915,25 @@ function renderPathTrace(path, activeIndex) {
   display.innerHTML = '';
   path.forEach((state, idx) => {
     const span = document.createElement('span');
-    span.className = `px-1.5 py-0.2 rounded font-mono text-xs ${
-      idx === activeIndex
-        ? 'bg-sky-400 text-slate-950 font-bold'
-        : idx < activeIndex
-        ? 'bg-white/[0.08] text-slate-300'
-        : 'text-slate-600'
-    }`;
+    span.style.padding = '2px 6px';
+    span.style.borderRadius = '3px';
+    span.style.fontFamily = 'JetBrains Mono, monospace';
+    span.style.fontSize = '11px';
+    if (idx === activeIndex) {
+      span.style.background = 'var(--accent-cyan)';
+      span.style.color = '#030712';
+      span.style.fontWeight = '700';
+    } else if (idx < activeIndex) {
+      span.style.background = 'rgba(255,255,255,0.08)';
+      span.style.color = '#fff';
+    } else {
+      span.style.color = 'var(--text-muted)';
+    }
     span.textContent = state;
     display.appendChild(span);
     if (idx < path.length - 1) {
       const arrow = document.createElement('span');
-      arrow.className = 'text-slate-600 text-xs';
+      arrow.style.color = 'var(--text-muted)';
       arrow.textContent = '➜';
       display.appendChild(arrow);
     }
@@ -938,10 +944,12 @@ function showVerdict(accepted) {
   const badge = document.getElementById('sim-verdict-badge');
   if (accepted) {
     badge.textContent = 'ACCEPTED (IN-LANGUAGE)';
-    badge.className = 'px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40';
+    badge.style.background = 'var(--accent-emerald-bg)';
+    badge.style.color = 'var(--accent-emerald)';
   } else {
     badge.textContent = 'REJECTED (OUT-OF-LANGUAGE)';
-    badge.className = 'px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-500/20 text-rose-400 border border-rose-500/40';
+    badge.style.background = 'var(--accent-rose-bg)';
+    badge.style.color = 'var(--accent-rose)';
   }
 }
 
@@ -1001,7 +1009,8 @@ function toggleReplayPlayback() {
 
 async function runComparison() {
   if (!currentLearnedDFA) return;
-  const langId = document.getElementById('select-target-lang').value;
+  const langSelect = document.getElementById('select-target-lang');
+  const langId = langSelect ? langSelect.value || 'ends_with_ab' : 'ends_with_ab';
 
   try {
     const refRes = await fetch(`/api/reference-dfa/${langId}`);
@@ -1035,31 +1044,38 @@ async function runComparison() {
 
     if (metrics.is_equivalent) {
       verdictPill.textContent = 'EXACTLY EQUIVALENT (100% MATCH)';
-      verdictPill.className = 'inline-block px-2.5 py-1 rounded text-xs font-mono font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40';
+      verdictPill.style.background = 'var(--accent-emerald-bg)';
+      verdictPill.style.color = 'var(--accent-emerald)';
       cexEl.textContent = 'No counterexample: machine recognizes the identical regular language!';
       previewEquiv.textContent = 'Yes (100%)';
-      previewEquiv.className = 'font-bold text-emerald-400';
+      previewEquiv.style.color = 'var(--accent-emerald)';
     } else {
       verdictPill.textContent = 'NOT EQUIVALENT';
-      verdictPill.className = 'inline-block px-2.5 py-1 rounded text-xs font-mono font-bold bg-rose-500/20 text-rose-400 border border-rose-500/40';
+      verdictPill.style.background = 'var(--accent-rose-bg)';
+      verdictPill.style.color = 'var(--accent-rose)';
       cexEl.textContent = `Counterexample: ${metrics.counterexample === '' ? 'ε (empty string)' : metrics.counterexample}`;
       previewEquiv.textContent = 'No';
-      previewEquiv.className = 'font-bold text-rose-400';
+      previewEquiv.style.color = 'var(--accent-rose)';
     }
 
     const disagList = document.getElementById('disagreements-list');
     disagList.innerHTML = '';
     const diffs = compData.disagreements || [];
     if (diffs.length === 0) {
-      disagList.innerHTML = '<p class="text-emerald-400 italic text-xs">No disagreements on test sample.</p>';
+      disagList.innerHTML = '<span style="color: var(--accent-emerald); font-style: italic; font-size: 11px;">No disagreements on test sample.</span>';
     } else {
       diffs.forEach(d => {
         const row = document.createElement('div');
-        row.className = 'flex items-center justify-between p-1.5 bg-rose-500/10 border border-rose-500/20 rounded text-xs';
+        row.style.display = 'flex';
+        row.style.justifyContent = 'space-between';
+        row.style.padding = '4px 6px';
+        row.style.background = 'var(--accent-rose-bg)';
+        row.style.borderRadius = '4px';
+        row.style.fontSize = '11px';
         const strLabel = d.string === '' ? 'ε' : d.string;
         row.innerHTML = `
-          <span class="text-slate-200 font-bold font-mono">${strLabel}</span>
-          <span class="text-[10px] text-rose-400 font-mono">Learned: ${d.candidate_predicted ? '+' : '-'} | True: ${d.true_label ? '+' : '-'}</span>
+          <span style="font-weight: 700; color: #fff;">${strLabel}</span>
+          <span style="color: var(--accent-rose); font-size: 10px;">Learned: ${d.candidate_predicted ? '+' : '-'} | True: ${d.true_label ? '+' : '-'}</span>
         `;
         disagList.appendChild(row);
       });
@@ -1074,7 +1090,8 @@ async function runComparison() {
 // ---------------------------------------------------------------------------
 
 async function runLearningCurveExperiment() {
-  const langId = document.getElementById('select-target-lang').value;
+  const langSelect = document.getElementById('select-target-lang');
+  const langId = langSelect ? langSelect.value || 'ends_with_ab' : 'ends_with_ab';
   const btn = document.getElementById('btn-run-learning-curve');
   btn.textContent = 'Running...';
   btn.disabled = true;
@@ -1143,7 +1160,8 @@ async function runLearningCurveExperiment() {
 }
 
 async function runNoiseStudyExperiment() {
-  const langId = document.getElementById('select-target-lang').value;
+  const langSelect = document.getElementById('select-target-lang');
+  const langId = langSelect ? langSelect.value || 'ends_with_ab' : 'ends_with_ab';
   const btn = document.getElementById('btn-run-noise-study');
   btn.textContent = 'Running...';
   btn.disabled = true;
@@ -1211,7 +1229,8 @@ async function runNoiseStudyExperiment() {
 }
 
 async function runActiveStudyExperiment() {
-  const langId = document.getElementById('select-target-lang').value;
+  const langSelect = document.getElementById('select-target-lang');
+  const langId = langSelect ? langSelect.value || 'ends_with_ab' : 'ends_with_ab';
   const btn = document.getElementById('btn-run-active-study');
   btn.textContent = 'Running...';
   btn.disabled = true;

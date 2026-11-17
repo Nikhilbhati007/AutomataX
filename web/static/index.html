@@ -1,600 +1,508 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AutomataX — Interactive Automata Research Workbench</title>
   
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            brand: {
-              50: '#f0f9ff',
-              100: '#e0f2fe',
-              400: '#38bdf8',
-              500: '#0ea5e9',
-              600: '#0284c7',
-            }
-          }
-        }
-      }
-    }
-  </script>
+  <!-- Self-contained Pure CSS (Zero external CSS/CDN dependencies) -->
+  <link rel="stylesheet" href="/styles.css">
 
   <!-- Cytoscape.js for interactive automata graph -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
   <!-- Chart.js for benchmark plots -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Linear / Vercel Studio Workstation Stylesheet -->
-  <link rel="stylesheet" href="/styles.css">
 </head>
-<body class="flex flex-col h-screen w-screen overflow-hidden bg-[#080c14] text-slate-100 antialiased select-none">
+<body>
 
-  <!-- ===================================================================== -->
-  <!-- Top Application Bar (Linear / Vercel Studio Slim Header)              -->
-  <!-- ===================================================================== -->
-  <header class="h-12 border-b border-white/[0.07] bg-[#0a0f1d]/90 backdrop-blur-md px-3.5 flex items-center justify-between z-40 shrink-0">
-    
-    <!-- Left: Brand, Target Language & Algorithm Switcher -->
-    <div class="flex items-center space-x-3">
-      <div class="flex items-center space-x-2 pr-2 border-r border-white/[0.08]">
-        <div class="h-6 w-6 rounded bg-gradient-to-br from-sky-400 to-blue-600 flex items-center justify-center font-bold text-slate-950 text-xs shadow-sm">
-          AX
+  <div id="app-root">
+
+    <!-- =================================================================== -->
+    <!-- Top Studio Header                                                   -->
+    <!-- =================================================================== -->
+    <header id="top-header">
+      
+      <!-- Left: Logo, Language Select & Algorithm -->
+      <div class="header-left">
+        <div class="brand-badge">
+          <div class="brand-icon">AX</div>
+          <span class="brand-title">AutomataX</span>
         </div>
-        <span class="text-xs font-semibold tracking-tight text-white">AutomataX</span>
-      </div>
 
-      <!-- Language Dropdown -->
-      <div class="relative flex items-center">
-        <select id="select-target-lang" class="bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-xs font-medium rounded-md px-2.5 py-1 text-slate-200 focus:outline-none focus:border-sky-400 transition cursor-pointer">
-          <!-- Populated dynamically -->
+        <select id="select-target-lang" class="studio-select">
+          <option value="ends_with_ab" selected>Ends with 'ab' (3 states)</option>
+          <option value="even_ones">Even number of 1s (2 states)</option>
+          <option value="no_aa">No 'aa' substring (3 states)</option>
+          <option value="len_div_3">Length divisible by 3 (3 states)</option>
+          <option value="equal_a_b_mod2">Equal a, b mod 2 (4 states)</option>
+          <option value="third_from_end_a">3rd from end is 'a' (8 states)</option>
         </select>
-      </div>
 
-      <!-- Inference Algorithm Segmented Switcher -->
-      <div class="segmented-control hidden sm:inline-flex">
-        <button class="algo-btn segmented-btn active" data-algo="edsm">
-          <span>EDSM</span>
-          <span class="text-[10px] text-sky-400 opacity-80">(Evidence)</span>
-        </button>
-        <button class="algo-btn segmented-btn" data-algo="rpni">
-          <span>RPNI</span>
-          <span class="text-[10px] text-slate-400">(Shortlex)</span>
-        </button>
-        <button class="algo-btn segmented-btn" data-algo="lstar">
-          <span>L*</span>
-          <span class="text-[10px] text-amber-400 opacity-80">(Active)</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- Center: View Mode Switcher -->
-    <div class="segmented-control">
-      <button class="mode-tab segmented-btn active" data-mode="canvas">
-        <svg class="w-3.5 h-3.5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
-        <span class="hidden md:inline">Workbench</span>
-      </button>
-      <button class="mode-tab segmented-btn" data-mode="simulate">
-        <svg class="w-3.5 h-3.5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
-        <span class="hidden md:inline">String Traversal</span>
-      </button>
-      <button class="mode-tab segmented-btn" data-mode="replay">
-        <svg class="w-3.5 h-3.5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
-        <span class="hidden md:inline">PTA Replay</span>
-      </button>
-      <button class="mode-tab segmented-btn" data-mode="compare">
-        <svg class="w-3.5 h-3.5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M16 3h5v5"></path><path d="M4 20L21 3"></path><path d="M21 16v5h-5"></path><path d="M15 15l6 6"></path><path d="M4 4l5 5"></path></svg>
-        <span class="hidden md:inline">Diff Polygraph</span>
-      </button>
-      <button class="mode-tab segmented-btn" data-mode="analytics">
-        <svg class="w-3.5 h-3.5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-        <span class="hidden md:inline">Analytics</span>
-      </button>
-    </div>
-
-    <!-- Right: Case Studies, Panel Toggles & Execute -->
-    <div class="flex items-center space-x-2">
-      <!-- Case Dossier Modal Button -->
-      <button id="btn-open-dossier" class="btn-workstation text-xs" title="Curated Research Scenarios">
-        <svg class="w-3.5 h-3.5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
-        <span class="hidden lg:inline">Case Studies</span>
-      </button>
-
-      <!-- Toggle Left Sidebar -->
-      <button id="btn-toggle-left-panel" class="btn-workstation p-1.5" title="Toggle Dataset Panel">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
-      </button>
-
-      <!-- Toggle Right Sidebar -->
-      <button id="btn-toggle-right-panel" class="btn-workstation p-1.5" title="Toggle Properties Inspector">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"></rect><line x1="15" y1="3" x2="15" y2="21"></line></svg>
-      </button>
-
-      <!-- Run Inference Primary Button -->
-      <button id="btn-quick-run" class="btn-workstation primary px-3">
-        <svg class="w-3 h-3 animate-spin hidden" id="spin-inference" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
-        <span id="btn-run-text">Run Inference</span>
-      </button>
-    </div>
-
-  </header>
-
-  <!-- ===================================================================== -->
-  <!-- Main Workspace Area: Expansive Canvas + Collapsible Drawers           -->
-  <!-- ===================================================================== -->
-  <main class="relative flex-1 flex overflow-hidden w-full h-[calc(100vh-48px)]">
-
-    <!-- ------------------------------------------------------------------- -->
-    <!-- LEFT PANEL: Dataset Controls & Evidence Board (Collapsible)         -->
-    <!-- ------------------------------------------------------------------- -->
-    <aside id="left-panel" class="w-80 h-full border-r border-white/[0.07] bg-[#0b101c]/95 flex flex-col shrink-0 z-20 transition-all duration-200">
-      
-      <!-- Panel Header -->
-      <div class="h-10 px-3.5 border-b border-white/[0.07] flex items-center justify-between shrink-0 bg-white/[0.01]">
-        <div class="flex items-center space-x-1.5">
-          <span class="text-xs font-semibold text-slate-200">Dataset & Evidence</span>
-          <span id="train-count" class="text-[11px] font-mono px-1.5 py-0.2 rounded bg-white/[0.08] text-slate-300">35</span>
+        <div class="segmented-control">
+          <button class="algo-btn segmented-btn active" data-algo="edsm">
+            <span>EDSM</span>
+            <span class="btn-sub">(Evidence)</span>
+          </button>
+          <button class="algo-btn segmented-btn" data-algo="rpni">
+            <span>RPNI</span>
+            <span class="btn-sub">(Shortlex)</span>
+          </button>
+          <button class="algo-btn segmented-btn" data-algo="lstar">
+            <span>L*</span>
+            <span class="btn-sub">(Active)</span>
+          </button>
         </div>
-        <button id="btn-plant-clue" class="text-[11px] text-sky-400 hover:text-sky-300 font-medium flex items-center space-x-1" title="Add Custom String">
-          <span>+ Add String</span>
+      </div>
+
+      <!-- Center: Mode Switcher -->
+      <div class="header-center">
+        <div class="segmented-control">
+          <button class="mode-tab segmented-btn active" data-mode="canvas">
+            <span>Workbench</span>
+          </button>
+          <button class="mode-tab segmented-btn" data-mode="simulate">
+            <span>String Traversal</span>
+          </button>
+          <button class="mode-tab segmented-btn" data-mode="replay">
+            <span>PTA Replay</span>
+          </button>
+          <button class="mode-tab segmented-btn" data-mode="compare">
+            <span>Diff Polygraph</span>
+          </button>
+          <button class="mode-tab segmented-btn" data-mode="analytics">
+            <span>Analytics</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Right: Actions & Panel Toggles -->
+      <div class="header-right">
+        <button id="btn-open-dossier" class="btn-studio">
+          <span>Case Studies</span>
+        </button>
+
+        <button id="btn-toggle-left-panel" class="btn-studio btn-icon" title="Toggle Dataset Panel">
+          <span>◨ Data</span>
+        </button>
+
+        <button id="btn-toggle-right-panel" class="btn-studio btn-icon" title="Toggle Inspector Panel">
+          <span>◧ Props</span>
+        </button>
+
+        <button id="btn-quick-run" class="btn-studio primary">
+          <span id="btn-run-text">Run Inference</span>
         </button>
       </div>
 
-      <!-- Dataset Knobs Section (Scrollable) -->
-      <div class="p-3.5 border-b border-white/[0.07] space-y-3 shrink-0 bg-white/[0.01]">
-        <!-- Target Description & Alphabet -->
-        <div>
-          <div class="flex items-center justify-between text-xs text-slate-400 mb-1">
-            <span class="text-[10px] font-mono uppercase tracking-wider text-slate-500">Language Spec</span>
-            <span id="target-alphabet-badge" class="font-mono text-[10px] text-sky-400">Σ = {a, b}</span>
+    </header>
+
+    <!-- =================================================================== -->
+    <!-- Main Workspace Area                                                 -->
+    <!-- =================================================================== -->
+    <main id="main-workspace">
+
+      <!-- LEFT PANEL: Dataset & Evidence -->
+      <aside id="left-panel">
+        <div class="panel-header">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span>Dataset & Evidence</span>
+            <span id="train-count" class="pill-tag" style="background: rgba(255,255,255,0.08); color: #cbd5e1;">35</span>
           </div>
-          <p id="target-desc" class="text-xs text-slate-300 leading-snug line-clamp-2"></p>
+          <button id="btn-plant-clue" style="background: transparent; border: none; color: var(--accent-cyan); cursor: pointer; font-size: 11px; font-weight: 600;">
+            + Add String
+          </button>
         </div>
 
-        <!-- Sampling Mode & Size -->
-        <div class="grid grid-cols-2 gap-2.5">
-          <div>
-            <label class="block text-[10px] font-mono uppercase text-slate-500 mb-1">Sampling</label>
-            <select id="select-sampling-mode" class="w-full bg-white/[0.04] border border-white/[0.08] rounded px-2 py-1 text-xs text-slate-200 focus:outline-none">
-              <option value="length_stratified" selected>Stratified</option>
-              <option value="uniform">Uniform</option>
-              <option value="random_walk">Random Walk</option>
-              <option value="characteristic">Characteristic</option>
-            </select>
-          </div>
-          <div>
-            <div class="flex items-center justify-between mb-1">
-              <label class="text-[10px] font-mono uppercase text-slate-500">Sample Count</label>
-              <span id="val-sample-count" class="font-mono text-xs text-slate-300">35</span>
+        <div class="panel-content">
+          <!-- Language Spec Note -->
+          <div style="display: flex; flex-direction: column; gap: 4px; padding-bottom: 10px; border-bottom: 1px solid var(--border-subtle);">
+            <div style="display: flex; justify-content: space-between; font-size: 11px;">
+              <span style="color: var(--text-muted); text-transform: uppercase;">Language Rule</span>
+              <span id="target-alphabet-badge" class="font-mono" style="color: var(--accent-cyan);">Σ = {a, b}</span>
             </div>
-            <input type="range" id="input-sample-count" min="8" max="150" value="35">
+            <p id="target-desc" style="color: var(--text-dim); font-size: 11.5px; line-height: 1.4;">
+              Accepts all strings ending with suffix 'ab'.
+            </p>
           </div>
-        </div>
 
-        <!-- Max Length & Noise Rate -->
-        <div class="grid grid-cols-2 gap-2.5">
-          <div>
-            <div class="flex items-center justify-between mb-1">
-              <label class="text-[10px] font-mono uppercase text-slate-500">Max Length</label>
-              <span id="val-max-length" class="font-mono text-xs text-slate-300">7</span>
+          <!-- Controls: Sampling, Count, Max Len, Noise -->
+          <div style="display: flex; flex-direction: column; gap: 10px; padding-bottom: 12px; border-bottom: 1px solid var(--border-subtle);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 11px; color: var(--text-dim);">Sampling Mode</span>
+              <select id="select-sampling-mode" class="studio-select" style="padding: 3px 6px; font-size: 11px;">
+                <option value="length_stratified" selected>Stratified</option>
+                <option value="uniform">Uniform</option>
+                <option value="random_walk">Random Walk</option>
+                <option value="characteristic">Characteristic</option>
+              </select>
             </div>
-            <input type="range" id="input-max-length" min="3" max="12" value="7">
-          </div>
-          <div>
-            <div class="flex items-center justify-between mb-1">
-              <label class="text-[10px] font-mono uppercase text-slate-500">Label Noise</label>
-              <span id="val-noise-rate" class="font-mono text-xs text-rose-400">0%</span>
+
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-dim);">
+                <span>Sample Count</span>
+                <span id="val-sample-count" class="font-mono" style="color: var(--text-main); font-weight: 600;">35</span>
+              </div>
+              <input type="range" id="input-sample-count" min="8" max="150" value="35">
             </div>
-            <input type="range" id="input-noise-rate" min="0" max="25" value="0" step="1">
+
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-dim);">
+                <span>Max String Length</span>
+                <span id="val-max-length" class="font-mono" style="color: var(--text-main); font-weight: 600;">7</span>
+              </div>
+              <input type="range" id="input-max-length" min="3" max="12" value="7">
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-dim);">
+                <span>Label Noise</span>
+                <span id="val-noise-rate" class="font-mono" style="color: var(--accent-rose); font-weight: 600;">0%</span>
+              </div>
+              <input type="range" id="input-noise-rate" min="0" max="25" value="0">
+            </div>
+
+            <button id="btn-generate-data" class="btn-studio" style="width: 100%; margin-top: 4px;">
+              Re-sample Dataset
+            </button>
+          </div>
+
+          <!-- Filter & Search -->
+          <div style="display: flex; gap: 6px; align-items: center;">
+            <div class="segmented-control" style="flex-shrink: 0;">
+              <button class="evidence-filter-btn segmented-btn active" data-filter="all" style="padding: 2px 6px;">All</button>
+              <button class="evidence-filter-btn segmented-btn" data-filter="pos" style="color: var(--accent-emerald); padding: 2px 6px;">+Pos</button>
+              <button class="evidence-filter-btn segmented-btn" data-filter="neg" style="color: var(--accent-rose); padding: 2px 6px;">-Neg</button>
+            </div>
+            <input type="text" id="input-search-evidence" placeholder="Search..." class="studio-input" style="flex: 1; padding: 3px 8px; font-size: 11px;">
+          </div>
+
+          <!-- Evidence List -->
+          <div id="training-examples-list" style="display: flex; flex-direction: column; gap: 4px; overflow-y: auto; flex: 1; max-height: 380px;">
+            <!-- Dynamically populated evidence rows -->
           </div>
         </div>
+      </aside>
 
-        <button id="btn-generate-data" class="w-full btn-workstation py-1 text-xs justify-center text-slate-200">
-          Re-sample Training Set
-        </button>
-      </div>
-
-      <!-- Evidence Filter & Search Bar -->
-      <div class="p-2.5 border-b border-white/[0.07] flex items-center gap-1.5 shrink-0 bg-white/[0.01]">
-        <div class="segmented-control shrink-0">
-          <button class="evidence-filter-btn segmented-btn active" data-filter="all">All</button>
-          <button class="evidence-filter-btn segmented-btn text-emerald-400" data-filter="pos">+Pos</button>
-          <button class="evidence-filter-btn segmented-btn text-rose-400" data-filter="neg">-Neg</button>
-        </div>
-        <input type="text" id="input-search-evidence" placeholder="Filter strings..." class="flex-1 bg-white/[0.04] border border-white/[0.08] rounded px-2 py-1 text-xs font-mono text-slate-200 focus:outline-none focus:border-sky-400">
-      </div>
-
-      <!-- Evidence String List (Flex-1 scrollable) -->
-      <div id="training-examples-list" class="flex-1 overflow-y-auto p-2.5 space-y-1">
-        <!-- Dynamically populated evidence rows -->
-      </div>
-
-    </aside>
-
-
-    <!-- ------------------------------------------------------------------- -->
-    <!-- CENTER: Expansive Central Automata Canvas (Hero)                    -->
-    <!-- ------------------------------------------------------------------- -->
-    <div class="relative flex-1 h-full canvas-backdrop overflow-hidden flex flex-col">
-      
-      <!-- Graph Canvas Container -->
-      <div class="relative flex-1 w-full h-full">
+      <!-- CENTER: Expansive Graph Canvas Area -->
+      <section id="canvas-area">
         <div id="cy-container"></div>
 
-        <!-- Floating Graph Tools Dock (Top Right) -->
-        <div class="floating-dock absolute top-3.5 right-3.5 p-1 flex items-center space-x-1">
-          <!-- Layout Switcher -->
-          <select id="select-graph-layout" class="bg-transparent border-0 text-slate-300 text-xs font-medium px-2 py-1 focus:outline-none cursor-pointer">
-            <option value="cose" selected class="bg-slate-900">Physics (COSE)</option>
-            <option value="circle" class="bg-slate-900">Circle Layout</option>
-            <option value="concentric" class="bg-slate-900">Concentric Layers</option>
-            <option value="breadthfirst" class="bg-slate-900">Hierarchical Tree</option>
-            <option value="grid" class="bg-slate-900">Compact Grid</option>
+        <!-- Floating Tools Dock (Top Right) -->
+        <div class="floating-dock-top-right">
+          <select id="select-graph-layout" class="studio-select" style="padding: 3px 6px; font-size: 11.5px; border: none; background: transparent;">
+            <option value="cose" selected>Physics (COSE)</option>
+            <option value="circle">Circle Layout</option>
+            <option value="concentric">Concentric Radar</option>
+            <option value="breadthfirst">Tree Hierarchy</option>
+            <option value="grid">Grid Layout</option>
           </select>
-
-          <div class="h-4 w-px bg-white/[0.1] mx-0.5"></div>
-
-          <button id="btn-fit-graph" class="btn-workstation p-1 px-2 text-xs" title="Fit to Viewport">Fit</button>
-          <button id="btn-zoom-in" class="btn-workstation p-1 px-1.5 text-xs" title="Zoom In">+</button>
-          <button id="btn-zoom-out" class="btn-workstation p-1 px-1.5 text-xs" title="Zoom Out">-</button>
-          
-          <div class="h-4 w-px bg-white/[0.1] mx-0.5"></div>
-
-          <button id="btn-export-png" class="btn-workstation p-1 px-2 text-xs" title="Export High-Res PNG">PNG</button>
-          <button id="btn-export-json" class="btn-workstation p-1 px-2 text-xs" title="Export Model JSON">JSON</button>
+          <div style="width: 1px; height: 16px; background: var(--border-medium);"></div>
+          <button id="btn-fit-graph" class="btn-studio btn-icon" style="padding: 2px 8px;">Fit</button>
+          <button id="btn-zoom-in" class="btn-studio btn-icon" style="padding: 2px 8px;">+</button>
+          <button id="btn-zoom-out" class="btn-studio btn-icon" style="padding: 2px 8px;">-</button>
+          <div style="width: 1px; height: 16px; background: var(--border-medium);"></div>
+          <button id="btn-export-png" class="btn-studio btn-icon" style="padding: 2px 8px;">PNG</button>
+          <button id="btn-export-json" class="btn-studio btn-icon" style="padding: 2px 8px;">JSON</button>
         </div>
 
-        <!-- Minimal Legend (Bottom Left Floating Pill) -->
-        <div class="floating-dock absolute bottom-3.5 left-3.5 px-3 py-1.5 flex items-center space-x-3 text-xs text-slate-400">
-          <span class="flex items-center space-x-1.5">
-            <span class="h-2.5 w-2.5 rounded-full bg-sky-400 border border-sky-200 inline-block"></span>
-            <span class="text-slate-300">Start (q0)</span>
-          </span>
-          <span class="flex items-center space-x-1.5">
-            <span class="h-3 w-3 rounded-full border-2 border-emerald-400 bg-emerald-950/60 inline-block"></span>
-            <span class="text-emerald-400 font-medium">Double-Ring Accept</span>
-          </span>
-          <span class="flex items-center space-x-1.5">
-            <span class="h-2.5 w-2.5 rounded-full bg-slate-700 inline-block"></span>
-            <span class="text-slate-400">Normal</span>
-          </span>
-          <span class="text-slate-600">|</span>
-          <span id="badge-states-count" class="font-mono text-slate-300">0 states</span>
-          <span id="inference-meta" class="font-mono text-slate-400 text-[11px]"></span>
+        <!-- Floating Legend (Bottom Left) -->
+        <div class="floating-dock-bottom-left">
+          <div class="legend-item">
+            <span class="dot-start"></span>
+            <span>Start</span>
+          </div>
+          <div class="legend-item">
+            <span class="dot-accept"></span>
+            <span style="color: var(--accent-emerald); font-weight: 500;">Double-Ring Accept</span>
+          </div>
+          <div class="legend-item">
+            <span class="dot-normal"></span>
+            <span>Normal</span>
+          </div>
+          <span style="color: var(--border-medium);">|</span>
+          <span id="badge-states-count" class="font-mono" style="color: var(--text-main); font-weight: 600;">0 states</span>
+          <span id="inference-meta" class="font-mono" style="color: var(--text-muted); font-size: 11px;"></span>
         </div>
 
-        <!-- --------------------------------------------------------------- -->
-        <!-- FLOATING DRAWER: String Traversal Simulator (When active)       -->
-        <!-- --------------------------------------------------------------- -->
-        <div id="sim-floating-dock" class="floating-dock absolute bottom-3.5 left-1/2 -translate-x-1/2 w-[92%] max-w-2xl p-3 space-y-2 hidden">
-          <div class="flex items-center justify-between text-xs">
-            <div class="flex items-center space-x-2">
-              <span class="font-medium text-slate-200">Interactive String Simulator</span>
-              <div id="sim-verdict-badge" class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-white/[0.08] text-slate-400">
-                AWAITING INPUT
-              </div>
+        <!-- FLOATING DOCK: String Simulator (Bottom Center) -->
+        <div id="sim-floating-dock" class="floating-dock-bottom-center hidden">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-weight: 600; font-size: 12px;">String Traversal Simulator</span>
+              <span id="sim-verdict-badge" class="pill-tag" style="background: rgba(255,255,255,0.08); color: var(--text-dim);">AWAITING INPUT</span>
             </div>
-            <!-- Quick Probes -->
-            <div class="flex items-center space-x-1 text-[11px] font-mono">
-              <span class="text-slate-500 text-[10px]">PROBE:</span>
-              <button class="btn-quick-string px-1.5 py-0.5 rounded bg-white/[0.04] hover:bg-white/[0.08] text-slate-300" data-str="">ε (empty)</button>
-              <button class="btn-quick-string px-1.5 py-0.5 rounded bg-white/[0.04] hover:bg-white/[0.08] text-slate-300" data-str="ab">"ab"</button>
-              <button class="btn-quick-string px-1.5 py-0.5 rounded bg-white/[0.04] hover:bg-white/[0.08] text-slate-300" data-str="aab">"aab"</button>
-              <button class="btn-quick-string px-1.5 py-0.5 rounded bg-white/[0.04] hover:bg-white/[0.08] text-slate-300" data-str="ba">"ba"</button>
+            <div style="display: flex; align-items: center; gap: 4px; font-size: 11px;" class="font-mono">
+              <span style="color: var(--text-muted);">Probe:</span>
+              <button class="btn-quick-string btn-studio" style="padding: 1px 6px; font-size: 10.5px;" data-str="">ε</button>
+              <button class="btn-quick-string btn-studio" style="padding: 1px 6px; font-size: 10.5px;" data-str="ab">"ab"</button>
+              <button class="btn-quick-string btn-studio" style="padding: 1px 6px; font-size: 10.5px;" data-str="aab">"aab"</button>
+              <button class="btn-quick-string btn-studio" style="padding: 1px 6px; font-size: 10.5px;" data-str="ba">"ba"</button>
             </div>
           </div>
 
-          <div class="flex items-center gap-2">
-            <input type="text" id="input-test-string" placeholder="Type test string..." class="flex-1 bg-white/[0.04] border border-white/[0.08] rounded px-3 py-1.5 font-mono text-xs text-sky-400 focus:outline-none focus:border-sky-400">
-            <button id="btn-step-simulate" class="btn-workstation px-3 py-1.5 text-xs">Step</button>
-            <button id="btn-play-simulate" class="btn-workstation primary px-3.5 py-1.5 text-xs">Animate</button>
-            <button id="btn-reset-simulate" class="btn-workstation px-2.5 py-1.5 text-xs">Reset</button>
+          <div style="display: flex; gap: 6px; align-items: center;">
+            <input type="text" id="input-test-string" placeholder="Type test string..." class="studio-input font-mono" style="flex: 1;">
+            <button id="btn-step-simulate" class="btn-studio">Step</button>
+            <button id="btn-play-simulate" class="btn-studio primary">Animate</button>
+            <button id="btn-reset-simulate" class="btn-studio">Reset</button>
           </div>
 
-          <!-- Active Path Breadcrumbs -->
-          <div id="sim-path-display" class="font-mono text-xs text-slate-300 flex items-center space-x-1 flex-wrap pt-0.5">
-            <span class="text-slate-500 text-[11px]">Ready to simulate. Enter input string above.</span>
+          <div id="sim-path-display" class="font-mono" style="font-size: 11.5px; color: var(--text-dim); display: flex; flex-wrap: wrap; gap: 4px; align-items: center;">
+            Ready to simulate. Enter input string above.
           </div>
         </div>
 
-        <!-- --------------------------------------------------------------- -->
-        <!-- FLOATING DRAWER: PTA Replay Scrubber (When active)              -->
-        <!-- --------------------------------------------------------------- -->
-        <div id="replay-floating-dock" class="floating-dock absolute bottom-3.5 left-1/2 -translate-x-1/2 w-[92%] max-w-2xl p-3 space-y-2 hidden">
-          <div class="flex items-center justify-between text-xs">
-            <div class="flex items-center space-x-2 font-mono">
-              <span class="font-semibold text-slate-200">PTA State-Merge Timeline</span>
-              <span id="replay-step-type" class="px-2 py-0.5 rounded bg-sky-950 text-sky-300 border border-sky-800 text-[10px] font-bold uppercase">INIT</span>
+        <!-- FLOATING DOCK: PTA Replay Scrubber (Bottom Center) -->
+        <div id="replay-floating-dock" class="floating-dock-bottom-center hidden">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-weight: 600; font-size: 12px;">PTA State-Merge Timeline</span>
+              <span id="replay-step-type" class="pill-tag pos">INIT</span>
             </div>
-            <span id="replay-step-counter" class="font-mono text-slate-400 text-xs">Step 0 / 0</span>
+            <span id="replay-step-counter" class="font-mono" style="font-size: 11px; color: var(--text-dim);">Step 0 / 0</span>
           </div>
 
-          <div class="flex items-center space-x-2.5">
-            <button id="btn-replay-prev" class="btn-workstation p-1 px-2.5 text-xs">◀ Prev</button>
-            <input type="range" id="replay-scrubber" min="0" max="0" value="0" class="flex-1 cursor-pointer">
-            <button id="btn-replay-next" class="btn-workstation p-1 px-2.5 text-xs">Next ▶</button>
-            <button id="btn-replay-play" class="btn-workstation primary p-1 px-3 text-xs">▶ Play</button>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <button id="btn-replay-prev" class="btn-studio btn-icon">◀ Prev</button>
+            <input type="range" id="replay-scrubber" min="0" max="0" value="0" style="flex: 1;">
+            <button id="btn-replay-next" class="btn-studio btn-icon">Next ▶</button>
+            <button id="btn-replay-play" class="btn-studio primary">▶ Play</button>
           </div>
 
-          <p id="replay-step-desc" class="text-xs text-slate-300 font-mono truncate pt-0.5">
+          <p id="replay-step-desc" class="font-mono" style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">
             Run inference to generate PTA merge sequence.
           </p>
         </div>
 
-      </div>
-
-      <!-- ----------------------------------------------------------------- -->
-      <!-- OVERLAY VIEW: Equivalence Diff & Reference Comparison             -->
-      <!-- ----------------------------------------------------------------- -->
-      <div id="view-diff-overlay" class="absolute inset-0 bg-[#080c14] z-30 p-4 space-y-3 hidden flex flex-col overflow-y-auto">
-        <div class="flex items-center justify-between border-b border-white/[0.08] pb-2 shrink-0">
-          <div>
-            <h3 class="text-sm font-semibold text-white">Equivalence Polygraph & Ground-Truth Reference DFA</h3>
-            <p class="text-xs text-slate-400">Compares learned candidate machine against minimal theoretical reference DFA.</p>
-          </div>
-          <button id="btn-close-diff-view" class="btn-workstation text-xs">Close Diff</button>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1">
-          <!-- Left Diff Stats -->
-          <div class="lg:col-span-4 space-y-3">
-            <div class="glass-panel rounded-lg p-4 space-y-3">
-              <div id="compare-verdict-card" class="p-3 rounded-md text-center bg-white/[0.02] border border-white/[0.06] space-y-1">
-                <span id="compare-verdict-pill" class="inline-block px-2.5 py-1 rounded text-xs font-mono font-bold bg-white/[0.08] text-slate-300">
-                  AWAITING COMPARISON
-                </span>
-                <p id="compare-counterexample" class="text-xs font-mono text-rose-400"></p>
-              </div>
-
-              <div class="grid grid-cols-2 gap-2 text-xs font-mono">
-                <div class="p-2.5 bg-white/[0.02] rounded border border-white/[0.06]">
-                  <span class="text-slate-500 block text-[10px]">Learned States</span>
-                  <span id="comp-learned-states" class="text-base text-sky-400 font-bold">--</span>
-                </div>
-                <div class="p-2.5 bg-white/[0.02] rounded border border-white/[0.06]">
-                  <span class="text-slate-500 block text-[10px]">True Min States</span>
-                  <span id="comp-minimal-states" class="text-base text-emerald-400 font-bold">--</span>
-                </div>
-                <div class="p-2.5 bg-white/[0.02] rounded border border-white/[0.06]">
-                  <span class="text-slate-500 block text-[10px]">Test Accuracy</span>
-                  <span id="comp-accuracy" class="text-base text-slate-100 font-bold">--</span>
-                </div>
-                <div class="p-2.5 bg-white/[0.02] rounded border border-white/[0.06]">
-                  <span class="text-slate-500 block text-[10px]">F1 Score</span>
-                  <span id="comp-f1" class="text-base text-slate-100 font-bold">--</span>
-                </div>
-              </div>
-
-              <button id="btn-recompare" class="w-full btn-workstation py-1.5 text-xs justify-center">
-                Re-evaluate Equivalence
-              </button>
-            </div>
-
-            <!-- Disagreements -->
-            <div class="glass-panel rounded-lg p-3 space-y-2">
-              <span class="text-xs font-semibold text-slate-300">Disagreeing Counterexamples</span>
-              <div id="disagreements-list" class="max-h-56 overflow-y-auto space-y-1 font-mono text-xs">
-                <p class="text-slate-500 italic text-xs">No disagreements found.</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Right Minimal Reference DFA Canvas -->
-          <div class="lg:col-span-8 glass-panel rounded-lg p-3 flex flex-col relative h-[520px]">
-            <div class="flex items-center justify-between pb-2 border-b border-white/[0.06] shrink-0">
-              <span class="text-xs font-semibold text-slate-200">Ground-Truth Minimal Reference Machine</span>
-              <span id="ref-name-badge" class="font-mono text-xs text-emerald-400"></span>
-            </div>
-            <div class="relative flex-1 w-full h-full">
-              <div id="cy-reference-container"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- ----------------------------------------------------------------- -->
-      <!-- OVERLAY VIEW: Benchmark Labs & Empirical Plots                    -->
-      <!-- ----------------------------------------------------------------- -->
-      <div id="view-analytics-overlay" class="absolute inset-0 bg-[#080c14] z-30 p-4 space-y-4 hidden flex flex-col overflow-y-auto">
-        <div class="flex items-center justify-between border-b border-white/[0.08] pb-2 shrink-0">
-          <div>
-            <h3 class="text-sm font-semibold text-white">Empirical Benchmark Analytics</h3>
-            <p class="text-xs text-slate-400">Multi-seed experiments measuring sample complexity scaling, noise degradation, and active querying.</p>
-          </div>
-          <div class="flex items-center space-x-2">
-            <button id="btn-run-learning-curve" class="btn-workstation primary text-xs">Run Scaling Curves</button>
-            <button id="btn-run-noise-study" class="btn-workstation text-xs">Run Noise Study</button>
-            <button id="btn-run-active-study" class="btn-workstation text-xs">Run Active Oracle</button>
-            <button id="btn-close-analytics-view" class="btn-workstation text-xs">Close</button>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 flex-1">
-          <!-- Chart 1: Learning Curve -->
-          <div class="glass-panel rounded-lg p-3.5 space-y-2 flex flex-col">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-semibold text-slate-200">Sample Complexity</span>
-              <span class="text-[10px] font-mono text-sky-400">EDSM vs RPNI</span>
-            </div>
-            <div class="relative flex-1 min-h-[220px]">
-              <canvas id="chart-learning-curve"></canvas>
-            </div>
-          </div>
-
-          <!-- Chart 2: Noise Study -->
-          <div class="glass-panel rounded-lg p-3.5 space-y-2 flex flex-col">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-semibold text-slate-200">Noise Sensitivity</span>
-              <span class="text-[10px] font-mono text-rose-400">0% - 20% Flips</span>
-            </div>
-            <div class="relative flex-1 min-h-[220px]">
-              <canvas id="chart-noise-study"></canvas>
-            </div>
-          </div>
-
-          <!-- Chart 3: Active Learning -->
-          <div class="glass-panel rounded-lg p-3.5 space-y-2 flex flex-col">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-semibold text-slate-200">Active vs Random</span>
-              <span class="text-[10px] font-mono text-amber-400">Angluin MAT</span>
-            </div>
-            <div class="relative flex-1 min-h-[220px]">
-              <canvas id="chart-active-study"></canvas>
-            </div>
-          </div>
-        </div>
-      </div>
-
-    </div>
-
-
-    <!-- ------------------------------------------------------------------- -->
-    <!-- RIGHT PANEL: State & Model Properties Inspector (Collapsible)       -->
-    <!-- ------------------------------------------------------------------- -->
-    <aside id="right-panel" class="w-72 h-full border-l border-white/[0.07] bg-[#0b101c]/95 flex flex-col shrink-0 z-20 transition-all duration-200">
-      
-      <!-- Panel Header -->
-      <div class="h-10 px-3.5 border-b border-white/[0.07] flex items-center justify-between shrink-0 bg-white/[0.01]">
-        <span class="text-xs font-semibold text-slate-200">Automaton Properties</span>
-        <span class="text-[10px] font-mono text-slate-500">DFA INSPECTOR</span>
-      </div>
-
-      <div class="p-3.5 space-y-4 overflow-y-auto flex-1">
-        
-        <!-- Model Summary Metrics -->
-        <div class="space-y-2">
-          <span class="text-[10px] font-mono uppercase tracking-wider text-slate-500">Model Telemetry</span>
-          <div class="grid grid-cols-2 gap-2 text-xs font-mono">
-            <div class="p-2 bg-white/[0.02] border border-white/[0.06] rounded">
-              <span class="text-slate-500 text-[10px] block">States</span>
-              <span id="inspect-total-states" class="text-sm font-bold text-sky-400">--</span>
-            </div>
-            <div class="p-2 bg-white/[0.02] border border-white/[0.06] rounded">
-              <span class="text-slate-500 text-[10px] block">Transitions</span>
-              <span id="inspect-total-transitions" class="text-sm font-bold text-slate-200">--</span>
-            </div>
-            <div class="p-2 bg-white/[0.02] border border-white/[0.06] rounded">
-              <span class="text-slate-500 text-[10px] block">Alphabet</span>
-              <span id="inspect-alphabet" class="text-xs font-bold text-slate-200">--</span>
-            </div>
-            <div class="p-2 bg-white/[0.02] border border-white/[0.06] rounded">
-              <span class="text-slate-500 text-[10px] block">State Merges</span>
-              <span id="inspect-merges" class="text-sm font-bold text-amber-400">0</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Selected Node Inspector -->
-        <div class="space-y-2 pt-2 border-t border-white/[0.07]">
-          <span class="text-[10px] font-mono uppercase tracking-wider text-slate-500">Selected State</span>
-          <div id="inspector-node-empty" class="p-3 rounded bg-white/[0.02] border border-white/[0.06] text-xs text-slate-500 text-center italic">
-            Click any node on the graph canvas to inspect its transition formula.
-          </div>
-          <div id="inspector-node-card" class="hidden p-3 rounded bg-white/[0.03] border border-white/[0.08] space-y-2 text-xs font-mono">
-            <div class="flex items-center justify-between">
-              <span id="inspect-state-id" class="font-bold text-sky-400 text-sm">q0</span>
-              <span id="inspect-state-type" class="text-[10px] px-1.5 py-0.5 rounded bg-white/[0.08] text-slate-300">Start</span>
-            </div>
+        <!-- OVERLAY: Diff Polygraph -->
+        <div id="view-diff-overlay" class="full-overlay hidden">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px;">
             <div>
-              <span class="text-slate-500 text-[10px] block mb-1">Outgoing Transitions:</span>
-              <div id="inspect-transitions-list" class="space-y-1 text-slate-200 text-xs">
-                <!-- Transitions inserted here -->
+              <h3 style="font-size: 14px; font-weight: 600; color: #fff;">Equivalence Polygraph & Ground-Truth Reference DFA</h3>
+              <p style="font-size: 12px; color: var(--text-muted);">Compares learned candidate machine against minimal theoretical reference DFA.</p>
+            </div>
+            <button id="btn-close-diff-view" class="btn-studio">Close Diff View</button>
+          </div>
+
+          <div style="display: flex; gap: 16px; flex: 1;">
+            <div style="width: 320px; display: flex; flex-direction: column; gap: 12px;">
+              <div class="studio-card">
+                <div id="compare-verdict-card" style="text-align: center; padding: 10px; background: rgba(255,255,255,0.02); border-radius: 6px;">
+                  <span id="compare-verdict-pill" class="pill-tag" style="font-size: 11px;">AWAITING COMPARISON</span>
+                  <p id="compare-counterexample" class="font-mono" style="font-size: 11px; color: var(--accent-rose); margin-top: 6px;"></p>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px;" class="font-mono">
+                  <div class="studio-card" style="padding: 8px;">
+                    <span style="font-size: 10px; color: var(--text-muted); display: block;">Learned States</span>
+                    <span id="comp-learned-states" style="font-size: 16px; font-weight: 700; color: var(--accent-cyan);">--</span>
+                  </div>
+                  <div class="studio-card" style="padding: 8px;">
+                    <span style="font-size: 10px; color: var(--text-muted); display: block;">True Min States</span>
+                    <span id="comp-minimal-states" style="font-size: 16px; font-weight: 700; color: var(--accent-emerald);">--</span>
+                  </div>
+                  <div class="studio-card" style="padding: 8px;">
+                    <span style="font-size: 10px; color: var(--text-muted); display: block;">Test Accuracy</span>
+                    <span id="comp-accuracy" style="font-size: 16px; font-weight: 700; color: #fff;">--</span>
+                  </div>
+                  <div class="studio-card" style="padding: 8px;">
+                    <span style="font-size: 10px; color: var(--text-muted); display: block;">F1 Score</span>
+                    <span id="comp-f1" style="font-size: 16px; font-weight: 700; color: #fff;">--</span>
+                  </div>
+                </div>
+
+                <button id="btn-recompare" class="btn-studio" style="width: 100%; margin-top: 10px;">Re-evaluate Equivalence</button>
+              </div>
+
+              <div class="studio-card" style="flex: 1;">
+                <span style="font-size: 12px; font-weight: 600; color: var(--text-dim);">Counterexample Disagreements</span>
+                <div id="disagreements-list" style="margin-top: 6px; overflow-y: auto; max-height: 200px; display: flex; flex-direction: column; gap: 4px;" class="font-mono">
+                  <span style="font-size: 11px; color: var(--text-muted); font-style: italic;">No disagreements found.</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="studio-card" style="flex: 1; position: relative;">
+              <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--border-subtle); padding-bottom: 6px;">
+                <span style="font-size: 12px; font-weight: 600;">Ground-Truth Minimal Reference Machine</span>
+                <span id="ref-name-badge" class="font-mono" style="font-size: 11px; color: var(--accent-emerald);"></span>
+              </div>
+              <div style="position: absolute; top: 40px; left: 0; right: 0; bottom: 0;">
+                <div id="cy-reference-container" style="width: 100%; height: 100%;"></div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Equivalence Polygraph Preview -->
-        <div class="space-y-2 pt-2 border-t border-white/[0.07]">
-          <span class="text-[10px] font-mono uppercase tracking-wider text-slate-500">Generalization</span>
-          <div class="p-2.5 rounded bg-white/[0.02] border border-white/[0.06] space-y-1.5 text-xs font-mono">
-            <div class="flex justify-between">
-              <span class="text-slate-400">Accuracy:</span>
-              <span id="inspect-accuracy-preview" class="font-bold text-emerald-400">--</span>
+        <!-- OVERLAY: Benchmark Analytics -->
+        <div id="view-analytics-overlay" class="full-overlay hidden">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px;">
+            <div>
+              <h3 style="font-size: 14px; font-weight: 600; color: #fff;">Empirical Benchmark Analytics</h3>
+              <p style="font-size: 12px; color: var(--text-muted);">Multi-seed experiments measuring sample complexity scaling, noise degradation, and active querying.</p>
             </div>
-            <div class="flex justify-between">
-              <span class="text-slate-400">F1 Score:</span>
-              <span id="inspect-f1-preview" class="font-bold text-slate-200">--</span>
+            <div style="display: flex; gap: 8px;">
+              <button id="btn-run-learning-curve" class="btn-studio primary">Run Scaling Curves</button>
+              <button id="btn-run-noise-study" class="btn-studio">Run Noise Study</button>
+              <button id="btn-run-active-study" class="btn-studio">Run Active Oracle</button>
+              <button id="btn-close-analytics-view" class="btn-studio">Close Analytics</button>
             </div>
-            <div class="flex justify-between">
-              <span class="text-slate-400">Equivalent:</span>
-              <span id="inspect-equiv-preview" class="font-bold text-slate-400">--</span>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; flex: 1;">
+            <div class="studio-card" style="height: 380px;">
+              <div style="display: flex; justify-content: space-between;">
+                <span style="font-weight: 600; font-size: 12px;">Sample Complexity</span>
+                <span class="font-mono" style="font-size: 10px; color: var(--accent-cyan);">EDSM vs RPNI</span>
+              </div>
+              <div style="flex: 1; position: relative; margin-top: 10px;">
+                <canvas id="chart-learning-curve"></canvas>
+              </div>
+            </div>
+
+            <div class="studio-card" style="height: 380px;">
+              <div style="display: flex; justify-content: space-between;">
+                <span style="font-weight: 600; font-size: 12px;">Noise Sensitivity</span>
+                <span class="font-mono" style="font-size: 10px; color: var(--accent-rose);">0% - 20% Flips</span>
+              </div>
+              <div style="flex: 1; position: relative; margin-top: 10px;">
+                <canvas id="chart-noise-study"></canvas>
+              </div>
+            </div>
+
+            <div class="studio-card" style="height: 380px;">
+              <div style="display: flex; justify-content: space-between;">
+                <span style="font-weight: 600; font-size: 12px;">Active vs Random</span>
+                <span class="font-mono" style="font-size: 10px; color: var(--accent-amber);">Angluin MAT</span>
+              </div>
+              <div style="flex: 1; position: relative; margin-top: 10px;">
+                <canvas id="chart-active-study"></canvas>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- Algorithm Note -->
-        <div class="p-2.5 rounded bg-white/[0.02] border border-white/[0.06] text-[11px] text-slate-400 leading-relaxed">
-          <span class="font-medium text-slate-300 block mb-0.5">Algorithm Note:</span>
-          <span id="algo-explainer">EDSM evaluates candidate merges by global evidence endorsement gain.</span>
+      </section>
+
+      <!-- RIGHT PANEL: Inspector -->
+      <aside id="right-panel">
+        <div class="panel-header">
+          <span>Automaton Properties</span>
+          <span style="font-size: 10px; font-weight: 400; color: var(--text-muted);" class="font-mono">DFA INSPECTOR</span>
         </div>
 
-      </div>
+        <div class="panel-content">
+          <!-- Metrics -->
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <span style="font-size: 10px; text-transform: uppercase; color: var(--text-muted);" class="font-mono">Model Telemetry</span>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;" class="font-mono">
+              <div class="studio-card" style="padding: 8px;">
+                <span style="font-size: 10px; color: var(--text-muted); display: block;">States</span>
+                <span id="inspect-total-states" style="font-size: 14px; font-weight: 700; color: var(--accent-cyan);">--</span>
+              </div>
+              <div class="studio-card" style="padding: 8px;">
+                <span style="font-size: 10px; color: var(--text-muted); display: block;">Transitions</span>
+                <span id="inspect-total-transitions" style="font-size: 14px; font-weight: 700; color: #fff;">--</span>
+              </div>
+              <div class="studio-card" style="padding: 8px;">
+                <span style="font-size: 10px; color: var(--text-muted); display: block;">Alphabet</span>
+                <span id="inspect-alphabet" style="font-size: 12px; font-weight: 700; color: #fff;">--</span>
+              </div>
+              <div class="studio-card" style="padding: 8px;">
+                <span style="font-size: 10px; color: var(--text-muted); display: block;">State Merges</span>
+                <span id="inspect-merges" style="font-size: 14px; font-weight: 700; color: var(--accent-amber);">0</span>
+              </div>
+            </div>
+          </div>
 
-    </aside>
+          <!-- Selected State Inspector -->
+          <div style="display: flex; flex-direction: column; gap: 6px; padding-top: 10px; border-top: 1px solid var(--border-subtle);">
+            <span style="font-size: 10px; text-transform: uppercase; color: var(--text-muted);" class="font-mono">Selected State</span>
+            <div id="inspector-node-empty" class="studio-card" style="text-align: center; color: var(--text-muted); font-size: 11px; font-style: italic;">
+              Click any node on the graph canvas to inspect its transition formula.
+            </div>
+            <div id="inspector-node-card" class="studio-card hidden font-mono" style="gap: 8px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span id="inspect-state-id" style="font-size: 14px; font-weight: 700; color: var(--accent-cyan);">q0</span>
+                <span id="inspect-state-type" class="pill-tag">Start</span>
+              </div>
+              <div>
+                <span style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 4px;">Outgoing Transitions:</span>
+                <div id="inspect-transitions-list" style="display: flex; flex-direction: column; gap: 4px;"></div>
+              </div>
+            </div>
+          </div>
 
-  </main>
+          <!-- Generalization Preview -->
+          <div style="display: flex; flex-direction: column; gap: 6px; padding-top: 10px; border-top: 1px solid var(--border-subtle);">
+            <span style="font-size: 10px; text-transform: uppercase; color: var(--text-muted);" class="font-mono">Generalization</span>
+            <div class="studio-card font-mono" style="gap: 4px; font-size: 11px;">
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: var(--text-muted);">Accuracy:</span>
+                <span id="inspect-accuracy-preview" style="color: var(--accent-emerald); font-weight: 700;">--</span>
+              </div>
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: var(--text-muted);">F1 Score:</span>
+                <span id="inspect-f1-preview" style="color: #fff; font-weight: 700;">--</span>
+              </div>
+              <div style="display: flex; justify-content: space-between;">
+                <span style="color: var(--text-muted);">Equivalent:</span>
+                <span id="inspect-equiv-preview" style="font-weight: 700;">--</span>
+              </div>
+            </div>
+          </div>
 
-  <!-- ===================================================================== -->
-  <!-- Case Studies Dossier Modal (Linear / Studio Clean Modal)              -->
-  <!-- ===================================================================== -->
-  <div id="modal-dossier-vault" class="modal-overlay hidden">
-    <div class="max-w-2xl w-full bg-[#0d1321] border border-white/[0.12] rounded-lg p-5 space-y-4 shadow-2xl">
-      <div class="flex items-center justify-between border-b border-white/[0.08] pb-3">
-        <div>
-          <h3 class="text-sm font-semibold text-white">Curated Research Case Studies</h3>
-          <p class="text-xs text-slate-400 mt-0.5">Select a presentation scenario demonstrating convergence, noise resistance, or active learning.</p>
-        </div>
-        <button id="btn-close-dossier" class="text-slate-400 hover:text-white text-base">&times;</button>
-      </div>
-
-      <div id="dossier-cards-grid" class="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto pr-1">
-        <!-- Injected dynamically -->
-      </div>
-    </div>
-  </div>
-
-  <!-- ===================================================================== -->
-  <!-- Add String / Plant Custom Clue Modal                                  -->
-  <!-- ===================================================================== -->
-  <div id="modal-plant-clue" class="modal-overlay hidden">
-    <div class="max-w-md w-full bg-[#0d1321] border border-white/[0.12] rounded-lg p-5 space-y-4 shadow-2xl">
-      <div class="flex items-center justify-between border-b border-white/[0.08] pb-2.5">
-        <h3 class="text-sm font-semibold text-white">Add Custom Training String</h3>
-        <button id="btn-close-plant-clue" class="text-slate-400 hover:text-white text-base">&times;</button>
-      </div>
-      <p class="text-xs text-slate-400">
-        Inject an arbitrary labeled string to test how the inference engine adapts its hypothesis.
-      </p>
-      <div class="space-y-3">
-        <div>
-          <label class="block text-xs font-mono text-slate-300 mb-1">STRING (leave empty for ε):</label>
-          <input type="text" id="input-new-clue-string" placeholder="e.g. aab, b, a" class="w-full bg-white/[0.04] border border-white/[0.08] rounded px-3 py-1.5 text-xs font-mono text-sky-400 focus:outline-none focus:border-sky-400">
-        </div>
-        <div>
-          <label class="block text-xs font-mono text-slate-300 mb-1">LABEL:</label>
-          <div class="grid grid-cols-2 gap-2">
-            <button type="button" id="btn-label-pos" class="btn-workstation py-2 text-xs font-medium border-emerald-500/50 bg-emerald-500/10 text-emerald-400">
-              + Positive (In-Language)
-            </button>
-            <button type="button" id="btn-label-neg" class="btn-workstation py-2 text-xs font-medium text-slate-400">
-              - Negative (Out-of-Language)
-            </button>
+          <!-- Note -->
+          <div class="studio-card" style="font-size: 11px; color: var(--text-dim); line-height: 1.4;">
+            <span style="font-weight: 600; color: #fff; display: block; margin-bottom: 2px;">Algorithm Note:</span>
+            <span id="algo-explainer">EDSM evaluates candidate merges by global evidence endorsement gain.</span>
           </div>
         </div>
-        <button id="btn-submit-clue" class="btn-workstation primary w-full py-2 text-xs mt-2 justify-center">
-          Add String & Re-infer
-        </button>
+      </aside>
+
+    </main>
+
+    <!-- Case Studies Modal -->
+    <div id="modal-dossier-vault" class="modal-overlay hidden">
+      <div class="modal-box">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px;">
+          <div>
+            <h3 style="font-size: 14px; font-weight: 600; color: #fff;">Curated Research Case Studies</h3>
+            <p style="font-size: 11.5px; color: var(--text-muted);">Select a scenario demonstrating convergence, noise resistance, or active learning.</p>
+          </div>
+          <button id="btn-close-dossier" style="background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer;">&times;</button>
+        </div>
+        <div id="dossier-cards-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; max-height: 380px; overflow-y: auto;"></div>
       </div>
     </div>
+
+    <!-- Add String Modal -->
+    <div id="modal-plant-clue" class="modal-overlay hidden">
+      <div class="modal-box" style="max-width: 420px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-subtle); padding-bottom: 8px;">
+          <h3 style="font-size: 14px; font-weight: 600; color: #fff;">Add Custom Training String</h3>
+          <button id="btn-close-plant-clue" style="background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer;">&times;</button>
+        </div>
+        <p style="font-size: 11.5px; color: var(--text-muted);">Inject an arbitrary labeled string to test how the inference engine adapts its hypothesis.</p>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <div>
+            <label class="font-mono" style="font-size: 11px; color: var(--text-dim); display: block; margin-bottom: 4px;">STRING (leave empty for ε):</label>
+            <input type="text" id="input-new-clue-string" placeholder="e.g. aab, b, a" class="studio-input font-mono" style="width: 100%;">
+          </div>
+          <div>
+            <label class="font-mono" style="font-size: 11px; color: var(--text-dim); display: block; margin-bottom: 4px;">LABEL:</label>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+              <button type="button" id="btn-label-pos" class="btn-studio" style="color: var(--accent-emerald); border-color: rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.1);">+ Positive</button>
+              <button type="button" id="btn-label-neg" class="btn-studio" style="color: var(--text-muted);">- Negative</button>
+            </div>
+          </div>
+          <button id="btn-submit-clue" class="btn-studio primary" style="width: 100%; margin-top: 6px;">Add String & Re-infer</button>
+        </div>
+      </div>
+    </div>
+
   </div>
 
-  <!-- Application Logic -->
   <script src="/app.js"></script>
 </body>
 </html>
