@@ -12,18 +12,22 @@ def create_presentation(output_path="AutomataX_Presentation.pptx"):
     prs.slide_width = Inches(13.333)
     prs.slide_height = Inches(7.5)
 
-    # Color Palette: Cyber-Detective Dark HUD
-    C_BG = RGBColor(8, 13, 26)          # #080D1A
-    C_CARD = RGBColor(14, 27, 51)       # #0E1B33
-    C_CARD_BORDER = RGBColor(30, 58, 95)# #1E3A5F
-    C_CYAN = RGBColor(0, 240, 255)      # #00F0FF
-    C_CYAN_DIM = RGBColor(8, 145, 178)  # #0891B2
-    C_AMBER = RGBColor(245, 158, 11)    # #F59E0B
-    C_EMERALD = RGBColor(0, 255, 157)   # #00FF9D
-    C_ROSE = RGBColor(255, 42, 95)      # #FF2A5F
-    C_WHITE = RGBColor(248, 250, 252)   # #F8FAFC
-    C_MUTED = RGBColor(148, 163, 184)   # #94A3B8
-    C_SUBTLE = RGBColor(100, 116, 139)  # #64748B
+    # Color Palette: Clean Modern Tech (Light Conference Theme)
+    C_BG = RGBColor(248, 250, 252)          # #F8FAFC (Crisp Light Slate)
+    C_CARD = RGBColor(255, 255, 255)        # #FFFFFF (Pure White Card)
+    C_CARD_BORDER = RGBColor(226, 232, 240) # #E2E8F0 (Subtle Slate Border)
+    C_PRIMARY = RGBColor(15, 23, 42)        # #0F172A (Deep Slate Navy - Headers)
+    C_TEXT = RGBColor(51, 65, 85)           # #334155 (Slate 700 - Body Text)
+    C_MUTED = RGBColor(71, 85, 105)         # #475569 (Slate 600 - Secondary Highlights)
+    C_SUBTLE = RGBColor(148, 163, 184)      # #94A3B8 (Slate 400 - Footers & Meta)
+    
+    # Modern Tech Accents (Optimized for High Readability on Light Theme)
+    C_CYAN = RGBColor(2, 132, 199)          # #0284C7 (Royal / Tech Sky Blue)
+    C_CYAN_DIM = RGBColor(14, 116, 144)     # #0E7490 (Deep Teal Accent)
+    C_AMBER = RGBColor(217, 119, 6)         # #D97706 (Deep Amber / Warm Copper)
+    C_EMERALD = RGBColor(5, 150, 105)       # #059669 (Deep Emerald Green)
+    C_ROSE = RGBColor(225, 29, 72)          # #E11D48 (Rich Crimson / Rose)
+    C_WHITE = RGBColor(255, 255, 255)       # #FFFFFF
 
     blank_layout = prs.slide_layouts[6]
 
@@ -58,9 +62,9 @@ def create_presentation(output_path="AutomataX_Presentation.pptx"):
         p_t.font.name = "Arial"
         p_t.font.size = Pt(22)
         p_t.font.bold = True
-        p_t.font.color.rgb = C_WHITE
+        p_t.font.color.rgb = C_PRIMARY
 
-        # Top cyan hairline divider
+        # Top slate hairline divider
         line = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0.8), Inches(1.35), Inches(11.733), Inches(0.02))
         line.fill.solid()
         line.fill.fore_color.rgb = C_CARD_BORDER
@@ -75,7 +79,7 @@ def create_presentation(output_path="AutomataX_Presentation.pptx"):
         p_f.text = f"AutomataX: Learning & Visualizing DFAs from Training Data{slide_str}"
         p_f.font.name = "Arial"
         p_f.font.size = Pt(8.5)
-        p_f.font.color.rgb = C_SUBTLE
+        p_f.font.color.rgb = C_MUTED
 
         return slide
 
@@ -96,14 +100,14 @@ def create_presentation(output_path="AutomataX_Presentation.pptx"):
     bg1.fill.fore_color.rgb = C_BG
     bg1.line.fill.background()
 
-    # Decorative Cyan Glow Box
-    dec_box = slide1.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(1.0), Inches(1.2), Inches(11.333), Inches(5.1))
+    # Decorative Modern Hero Card
+    dec_box = slide1.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(1.0), Inches(1.15), Inches(11.333), Inches(5.2))
     dec_box.fill.solid()
     dec_box.fill.fore_color.rgb = C_CARD
     dec_box.line.color.rgb = C_CYAN
-    dec_box.line.width = Pt(1.5)
+    dec_box.line.width = Pt(1.8)
 
-    tb1 = slide1.shapes.add_textbox(Inches(1.5), Inches(1.6), Inches(10.333), Inches(4.3))
+    tb1 = slide1.shapes.add_textbox(Inches(1.5), Inches(1.5), Inches(10.333), Inches(4.5))
     tf1 = tb1.text_frame
     tf1.word_wrap = True
 
@@ -112,7 +116,7 @@ def create_presentation(output_path="AutomataX_Presentation.pptx"):
     p.font.name = "Arial"
     p.font.size = Pt(11)
     p.font.bold = True
-    p.font.color.rgb = C_CYAN
+    p.font.color.rgb = C_CYAN_DIM
     p.space_after = Pt(12)
 
     p = tf1.add_paragraph()
@@ -120,14 +124,15 @@ def create_presentation(output_path="AutomataX_Presentation.pptx"):
     p.font.name = "Arial"
     p.font.size = Pt(36)
     p.font.bold = True
-    p.font.color.rgb = C_WHITE
+    p.font.color.rgb = C_PRIMARY
     p.space_after = Pt(8)
 
     p = tf1.add_paragraph()
     p.text = "Grammatical Inference, DFA State Merging & Interactive Forensic Visualization"
     p.font.name = "Arial"
     p.font.size = Pt(18)
-    p.font.color.rgb = C_AMBER
+    p.font.bold = True
+    p.font.color.rgb = C_CYAN
     p.space_after = Pt(28)
 
     p = tf1.add_paragraph()
@@ -137,7 +142,7 @@ def create_presentation(output_path="AutomataX_Presentation.pptx"):
              "• Full-Stack Interactive Forensic HUD (Cytoscape.js Topologies, Token Traversal, PTA Replay Scrubber)"
     p.font.name = "Arial"
     p.font.size = Pt(13)
-    p.font.color.rgb = C_MUTED
+    p.font.color.rgb = C_TEXT
     p.space_after = Pt(28)
 
     p = tf1.add_paragraph()
@@ -176,7 +181,7 @@ def create_presentation(output_path="AutomataX_Presentation.pptx"):
              "1. Correctly classifies all sample strings (M(s) = label for s ∈ S+ ∪ S-).\n" \
              "2. Generalizes beyond the sample to accurately recognize the infinite regular language L."
     p.font.size = Pt(11)
-    p.font.color.rgb = C_WHITE
+    p.font.color.rgb = C_TEXT
     p.space_after = Pt(10)
 
     # Card 2: Computational Complexity
@@ -199,7 +204,7 @@ def create_presentation(output_path="AutomataX_Presentation.pptx"):
              "• Need for Heuristics:\n" \
              "Polynomial-time heuristic state-merging (RPNI, EDSM) and active learning (L*) are indispensable."
     p.font.size = Pt(11)
-    p.font.color.rgb = C_WHITE
+    p.font.color.rgb = C_TEXT
 
     # Card 3: Project Objectives
     add_card(s2, 0.8 + (col_w + gap)*2, 1.6, col_w, 5.1, border_color=C_AMBER)
@@ -223,7 +228,7 @@ def create_presentation(output_path="AutomataX_Presentation.pptx"):
              "• Cyber-Detective HUD:\n" \
              "Real-time visual forensic platform for interactive investigation."
     p.font.size = Pt(11)
-    p.font.color.rgb = C_WHITE
+    p.font.color.rgb = C_TEXT
 
     # =========================================================================
     # SLIDE 3: System Architecture
@@ -257,13 +262,13 @@ def create_presentation(output_path="AutomataX_Presentation.pptx"):
         p.text = sdir
         p.font.size = Pt(9.5)
         p.font.bold = True
-        p.font.color.rgb = C_SUBTLE
+        p.font.color.rgb = C_MUTED
         p.space_after = Pt(14)
         
         p = tf.add_paragraph()
         p.text = sdesc
         p.font.size = Pt(10)
-        p.font.color.rgb = C_WHITE
+        p.font.color.rgb = C_TEXT
 
     # Architecture banner below
     add_card(s3, 0.8, 6.05, 11.733, 0.85, border_color=C_CARD_BORDER)
@@ -309,7 +314,7 @@ def create_presentation(output_path="AutomataX_Presentation.pptx"):
              "  - Set-of-states parallel simulation.\n" \
              "  - Full serialization (to_dict() / from_dict())."
     p.font.size = Pt(11)
-    p.font.color.rgb = C_WHITE
+    p.font.color.rgb = C_TEXT
 
     # Right Card: Theoretical Algorithms
     add_card(s4, 0.8 + col_w + 0.4, 1.6, col_w, 5.1, border_color=C_EMERALD)
@@ -332,7 +337,7 @@ def create_presentation(output_path="AutomataX_Presentation.pptx"):
              "  Constructs Product Automaton M1 ⊕ M2 (Symmetric Difference).\n" \
              "  BFS traversal isolates the shortest counterexample string w where M1(w) ≠ M2(w)."
     p.font.size = Pt(11)
-    p.font.color.rgb = C_WHITE
+    p.font.color.rgb = C_TEXT
 
     # =========================================================================
     # SLIDE 5: Benchmark Language Suite
@@ -374,13 +379,13 @@ def create_presentation(output_path="AutomataX_Presentation.pptx"):
         p.text = f"Alphabet: {alpha}  |  Minimal Size: {states}"
         p.font.size = Pt(9.5)
         p.font.bold = True
-        p.font.color.rgb = C_SUBTLE
+        p.font.color.rgb = C_MUTED
         p.space_after = Pt(6)
         
         p = tf.add_paragraph()
         p.text = desc
         p.font.size = Pt(10)
-        p.font.color.rgb = C_WHITE
+        p.font.color.rgb = C_TEXT
 
     # =========================================================================
     # SLIDE 6: Data Synthesis & Characteristic Samples (Phase 2)
@@ -408,7 +413,7 @@ def create_presentation(output_path="AutomataX_Presentation.pptx"):
              "• Controlled Label Noise Injection:\n" \
              "  Flips labels with probability η ∈ [0.0, 0.25] for robustness profiling."
     p.font.size = Pt(11)
-    p.font.color.rgb = C_WHITE
+    p.font.color.rgb = C_TEXT
 
     add_card(s6, 0.8 + col_w + 0.4, 1.6, col_w, 5.1, border_color=C_AMBER)
     tb = s6.shapes.add_textbox(Inches(1.0 + col_w + 0.4), Inches(1.8), Inches(col_w - 0.4), Inches(4.7))
@@ -431,7 +436,7 @@ def create_presentation(output_path="AutomataX_Presentation.pptx"):
              "• Synthesis Implementation:\n" \
              "  Our generator automatically computes Sp and pair distinguishing suffixes via product automaton BFS."
     p.font.size = Pt(11)
-    p.font.color.rgb = C_WHITE
+    p.font.color.rgb = C_TEXT
 
     # =========================================================================
     # SLIDE 7: Prefix Tree Acceptor & State Folding (Phase 3)
@@ -458,7 +463,7 @@ def create_presentation(output_path="AutomataX_Presentation.pptx"):
              "• Negative Constraints:\n" \
              "  Strings in S- act as guardrails: any state merge that would cause the machine to accept even one string in S- is strictly forbidden."
     p.font.size = Pt(11)
-    p.font.color.rgb = C_WHITE
+    p.font.color.rgb = C_TEXT
 
     add_card(s7, 0.8 + col_w + 0.4, 1.6, col_w, 5.1, border_color=C_ROSE)
     tb = s7.shapes.add_textbox(Inches(1.0 + col_w + 0.4), Inches(1.8), Inches(col_w - 0.4), Inches(4.7))
@@ -479,7 +484,7 @@ def create_presentation(output_path="AutomataX_Presentation.pptx"):
              "• Fast Disjoint-Set Union-Find:\n" \
              "  State equivalence classes are tracked using union-find with path compression, enabling rapid rollback if negative compatibility is violated."
     p.font.size = Pt(11)
-    p.font.color.rgb = C_WHITE
+    p.font.color.rgb = C_TEXT
 
     # =========================================================================
     # SLIDE 8: RPNI Algorithm
@@ -506,7 +511,7 @@ def create_presentation(output_path="AutomataX_Presentation.pptx"):
              "3. Compatibility Test:\n" \
              "   Attempt merge(q_red, q_blue). Fold to restore determinism. If any negative string in S- is accepted, roll back and try the next red state."
     p.font.size = Pt(11)
-    p.font.color.rgb = C_WHITE
+    p.font.color.rgb = C_TEXT
 
     add_card(s8, 0.8 + col_w + 0.4, 1.6, col_w, 5.1, border_color=C_AMBER)
     tb = s8.shapes.add_textbox(Inches(1.0 + col_w + 0.4), Inches(1.8), Inches(col_w - 0.4), Inches(4.7))
@@ -527,7 +532,7 @@ def create_presentation(output_path="AutomataX_Presentation.pptx"):
              "  - Order-dependent: Accepts the FIRST compatible red state without measuring evidence.\n" \
              "  - Under sparse data or noise, a false early merge locks in an incorrect topology, leading to cascading errors downstream."
     p.font.size = Pt(11)
-    p.font.color.rgb = C_WHITE
+    p.font.color.rgb = C_TEXT
 
     # =========================================================================
     # SLIDE 9: EDSM Algorithm
@@ -554,7 +559,7 @@ def create_presentation(output_path="AutomataX_Presentation.pptx"):
              "• Greedy on Evidence:\n" \
              "  Executes the merge with the highest positive evidence score first. If no merge has positive evidence, blue state is promoted to red."
     p.font.size = Pt(11)
-    p.font.color.rgb = C_WHITE
+    p.font.color.rgb = C_TEXT
 
     add_card(s9, 0.8 + col_w + 0.4, 1.6, col_w, 5.1, border_color=C_EMERALD)
     tb = s9.shapes.add_textbox(Inches(1.0 + col_w + 0.4), Inches(1.8), Inches(col_w - 0.4), Inches(4.7))
@@ -575,7 +580,7 @@ def create_presentation(output_path="AutomataX_Presentation.pptx"):
              "• Empirical Superiority:\n" \
              "  Achieves 15–30% higher generalization accuracy than RPNI on sparse samples across our benchmark suite."
     p.font.size = Pt(11)
-    p.font.color.rgb = C_WHITE
+    p.font.color.rgb = C_TEXT
 
     # =========================================================================
     # SLIDE 10: Angluin's L* Active Learning
@@ -602,7 +607,7 @@ def create_presentation(output_path="AutomataX_Presentation.pptx"):
              "  • E: Distinguishing suffixes\n" \
              "  • Rows row(s): Signature of state s across all suffixes in E."
     p.font.size = Pt(11)
-    p.font.color.rgb = C_WHITE
+    p.font.color.rgb = C_TEXT
 
     add_card(s10, 0.8 + col_w + 0.4, 1.6, col_w, 5.1, border_color=C_CYAN)
     tb = s10.shapes.add_textbox(Inches(1.0 + col_w + 0.4), Inches(1.8), Inches(col_w - 0.4), Inches(4.7))
@@ -625,7 +630,7 @@ def create_presentation(output_path="AutomataX_Presentation.pptx"):
              "• Counterexample Integration:\n" \
              "  When EQ returns counterexample c, all prefixes of c are added to S, driving guaranteed termination."
     p.font.size = Pt(11)
-    p.font.color.rgb = C_WHITE
+    p.font.color.rgb = C_TEXT
 
     # =========================================================================
     # SLIDE 11: Experiment 1: Learning Curves
@@ -656,7 +661,7 @@ def create_presentation(output_path="AutomataX_Presentation.pptx"):
              "• State Minimality:\n" \
              "  RPNI frequently under-merges or over-merges when data is sparse, producing erratic state counts. EDSM stabilizes rapidly at the true minimal state count."
     p.font.size = Pt(11)
-    p.font.color.rgb = C_WHITE
+    p.font.color.rgb = C_TEXT
 
     # =========================================================================
     # SLIDE 12: Experiment 2: Noise Study
@@ -686,7 +691,7 @@ def create_presentation(output_path="AutomataX_Presentation.pptx"):
              "• EDSM Graceful Degradation:\n" \
              "  EDSM evaluates aggregate evidence across all examples. A few corrupted labels are outvoted by authentic endorsements, retaining >82% accuracy even at 15% noise."
     p.font.size = Pt(11)
-    p.font.color.rgb = C_WHITE
+    p.font.color.rgb = C_TEXT
 
     # =========================================================================
     # SLIDE 13: Experiment 3: Active vs. Random
@@ -716,7 +721,7 @@ def create_presentation(output_path="AutomataX_Presentation.pptx"):
              "• Active Learning Results:\n" \
              "  Angluin's L* isolates boundary transitions directly via equivalence counterexamples, achieving 100% equivalence in under 24 queries—over 50% fewer queries than random sampling."
     p.font.size = Pt(11)
-    p.font.color.rgb = C_WHITE
+    p.font.color.rgb = C_TEXT
 
     # =========================================================================
     # SLIDE 14: Interactive Web Platform (AutomataX)
@@ -742,7 +747,7 @@ def create_presentation(output_path="AutomataX_Presentation.pptx"):
              "• Interactive evidence cards with +POS/-NEG filtering & custom clue injection.\n" \
              "• Dynamic layout engine: Physics (COSE), Circle, Concentric Radar, Grid."
     p.font.size = Pt(10)
-    p.font.color.rgb = C_WHITE
+    p.font.color.rgb = C_TEXT
 
     # Feature 2
     add_card(s14, 0.8 + gw + 0.4, 1.6, gw, gh, border_color=C_AMBER)
@@ -759,7 +764,7 @@ def create_presentation(output_path="AutomataX_Presentation.pptx"):
              "• One-click case deployment configuring target parameters and auto-running inference.\n" \
              "• Web Audio API tactical sound synthesis for immersive feedback."
     p.font.size = Pt(10)
-    p.font.color.rgb = C_WHITE
+    p.font.color.rgb = C_TEXT
 
     # Feature 3
     add_card(s14, 0.8, 1.6 + gh + 0.3, gw, gh, border_color=C_EMERALD)
@@ -776,7 +781,7 @@ def create_presentation(output_path="AutomataX_Presentation.pptx"):
              "• Quick probe buttons for ε, positive, and counterexample strings.\n" \
              "• PTA Collapse Scrubber: Timeline replay stepping through state-merging."
     p.font.size = Pt(10)
-    p.font.color.rgb = C_WHITE
+    p.font.color.rgb = C_TEXT
 
     # Feature 4
     add_card(s14, 0.8 + gw + 0.4, 1.6 + gh + 0.3, gw, gh, border_color=C_ROSE)
@@ -793,7 +798,7 @@ def create_presentation(output_path="AutomataX_Presentation.pptx"):
              "• Disagreements & counterexample string telemetry display.\n" \
              "• Live multi-seed Chart.js benchmark suites inside the browser."
     p.font.size = Pt(10)
-    p.font.color.rgb = C_WHITE
+    p.font.color.rgb = C_TEXT
 
     # =========================================================================
     # SLIDE 15: Verification & Testing
@@ -821,7 +826,7 @@ def create_presentation(output_path="AutomataX_Presentation.pptx"):
              "  - Phase 5: FastAPI REST endpoints & Cytoscape schemas (10 tests)\n\n" \
              "• 100% Pass Rate: Verified in 2.5s execution time."
     p.font.size = Pt(11)
-    p.font.color.rgb = C_WHITE
+    p.font.color.rgb = C_TEXT
 
     add_card(s15, 0.8 + col_w + 0.4, 1.6, col_w, 5.1, border_color=C_CYAN)
     tb = s15.shapes.add_textbox(Inches(1.0 + col_w + 0.4), Inches(1.8), Inches(col_w - 0.4), Inches(4.7))
@@ -844,7 +849,7 @@ def create_presentation(output_path="AutomataX_Presentation.pptx"):
              "• Invariant 4: Rollback Correctness\n" \
              "  Incompatible state merges leave the working PTA in an exact unaltered state."
     p.font.size = Pt(11)
-    p.font.color.rgb = C_WHITE
+    p.font.color.rgb = C_TEXT
 
     # =========================================================================
     # SLIDE 16: Conclusions & Future Work
@@ -870,7 +875,7 @@ def create_presentation(output_path="AutomataX_Presentation.pptx"):
              "• Standout Visual Experience:\n" \
              "  Cyber-Detective HUD with animated traversal, PTA replay scrubber, and case dossiers that demystify formal language inference."
     p.font.size = Pt(11)
-    p.font.color.rgb = C_WHITE
+    p.font.color.rgb = C_TEXT
 
     add_card(s16, 0.8 + col_w + 0.4, 1.6, col_w, 5.1, border_color=C_AMBER)
     tb = s16.shapes.add_textbox(Inches(1.0 + col_w + 0.4), Inches(1.8), Inches(col_w - 0.4), Inches(4.7))
@@ -892,7 +897,7 @@ def create_presentation(output_path="AutomataX_Presentation.pptx"):
              "  Repository: https://github.com/Nikhilbhati007/AutomataX.git\n" \
              "  Fully documented, tested, and ready for academic presentation."
     p.font.size = Pt(11)
-    p.font.color.rgb = C_WHITE
+    p.font.color.rgb = C_TEXT
 
     # Save presentation
     prs.save(output_path)
