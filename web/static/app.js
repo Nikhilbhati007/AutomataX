@@ -386,7 +386,11 @@ function setupTabs() {
           if (targetId === 'tab-simulator' && cySim) cySim.resize().fit(35);
           if (targetId === 'tab-replay' && cyReplay) cyReplay.resize().fit(35);
           if (targetId === 'tab-compare' && cyReference) cyReference.resize().fit(35);
-          if (targetId === 'tab-architect' && cyArchitect) cyArchitect.resize().fit(35);
+          if (targetId === 'tab-architect' && cyArchitect) {
+            cyArchitect.resize();
+            const layoutName = document.getElementById('arch-layout-select') ? document.getElementById('arch-layout-select').value : 'cose';
+            applyGraphLayout(cyArchitect, layoutName);
+          }
         }, 80);
       }
     });
@@ -1458,7 +1462,7 @@ async function initArchitectSector() {
     if (layoutSel) {
       layoutSel.addEventListener('change', () => {
         if (cyArchitect) {
-          applyLayout(cyArchitect, layoutSel.value);
+          applyGraphLayout(cyArchitect, layoutSel.value);
         }
       });
     }
@@ -1641,8 +1645,9 @@ function switchArchitectRepresentation(mode) {
   if (cyArchitect && machine.cytoscape) {
     cyArchitect.elements().remove();
     cyArchitect.add(machine.cytoscape);
-    const layoutName = document.getElementById('arch-layout-select').value || 'cose';
-    applyLayout(cyArchitect, layoutName);
+    const layoutEl = document.getElementById('arch-layout-select');
+    const layoutName = layoutEl ? layoutEl.value : 'cose';
+    applyGraphLayout(cyArchitect, layoutName);
   }
 
   const verdictEl = document.getElementById('arch-sim-verdict');
